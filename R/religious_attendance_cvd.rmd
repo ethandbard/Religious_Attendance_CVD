@@ -1,0 +1,140 @@
+---
+title: "Religious Attendance and CVD"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(tidyverse)
+library(scales)
+library(DT)
+library(vtable)
+```
+
+# Import data
+
+```{r}
+#demo
+xpt <- foreign::read.xport("../Data/DEMO_E.XPT")
+
+data <- xpt[c("SEQN", "RIAGENDR", "RIDAGEYR", "RIDRETH1", "DMDEDUC2", "DMDMARTL", "DMDBORN2")] %>% 
+  rename(gender = RIAGENDR,
+         age = RIDAGEYR,
+         ethnicity = RIDRETH1,
+         education = DMDEDUC2,
+         marital_status = DMDMARTL,
+         born_outside_us = DMDBORN2)
+
+#INQ
+xpt <- foreign::read.xport("../Data/INQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "INDFMMPI", "INDFMMPC")], by = "SEQN", all.x = TRUE) %>% 
+  rename(poverty_level_index = INDFMMPI,
+         poverty_level_category = INDFMMPC)
+
+#HIQ
+xpt <- foreign::read.xport("../Data/HIQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "HIQ011", "HIQ031A", "HIQ031B", "HIQ031D")], by = "SEQN", all.x = TRUE) %>% 
+  rename(health_insurance = HIQ011,
+         private_insurance = HIQ031A,
+         medicare = HIQ031B,
+         medicaid = HIQ031D)
+
+#HUQ
+xpt <- foreign::read.xport("../Data/HUQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "HUQ050")], by = "SEQN", all.x = TRUE) %>% 
+  rename(num_healthcare_visits = HUQ050)
+
+#FSQ
+xpt <- foreign::read.xport("../Data/FSQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "FSQ165", "FSQ171", "FSD670ZC", "FSD032A", "FSD032B")], by = "SEQN", all.x = TRUE) %>% 
+  rename(ever_received_food_stamps = FSQ165,
+         food_stamps_past_yr = FSQ171,
+         num_months_WIC = FSD670ZC,
+         worried_house_run_out_food = FSD032A,
+         food_ran_out = FSD032B)
+
+#PFQ
+xpt <- foreign::read.xport("../Data/PFQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "PFQ049")], by = "SEQN", all.x = TRUE) %>% 
+  rename(mobility_limit = PFQ049)
+
+#BPQ
+xpt <- foreign::read.xport("../Data/BPQ_E.xpt")
+
+data <- merge(data,xpt[c("SEQN", "BPQ020")], by = "SEQN", all.x = TRUE) %>% 
+  rename(high_blood_pressure = BPQ020)
+
+#GLU
+xpt <- foreign::read.xport("../Data/GLU_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "LBDGLUSI")], by = "SEQN", all.x = TRUE) %>%
+  rename(fasting_glucose = LBDGLUSI)
+
+#SMQRTU
+xpt <- foreign::read.xport("../Data/SMQRTU_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "SMQ680")], by = "SEQN", all.x = TRUE) %>% 
+  rename(tobacco_use_5_days = SMQ680)
+
+#ALQ
+xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "ALQ101")], by = "SEQN", all.x = TRUE) %>% 
+  rename(had_12_drinks_in_1yr = ALQ101)
+
+
+#SSQ
+xpt <- foreign::read.xport("../Data/SSQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "SSD044")], by = "SEQN", all.x = TRUE) %>% 
+  rename(religious_attendance = SSD044)
+
+#MCQ
+xpt <- foreign::read.xport("../Data/MCQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "MCQ160E", "MCQ160F")], by = "SEQN", all.x = TRUE) %>% 
+  rename(heart_attack = MCQ160E,
+         stroke = MCQ160F)
+
+#DR1FF
+xpt <- foreign::read.xport("../Data/DR1IFF_E.xpt") %>% 
+  select(SEQN, DR1IKCAL) %>% 
+  group_by(SEQN) %>% 
+  summarise(SEQN = SEQN,
+            calories = mean(DR1IKCAL, na.rm = T)) %>% 
+  distinct()
+
+data <- merge(data, xpt, by = "SEQN", all.x = TRUE)
+
+#write.csv(data, "../Data/nhanes0708.csv")
+```
+
+
+```{r}
+data$gender <- factor(data$gender,levels = c(1,2), labels = c("Male", "Female"))
+data$ethnicity <- factor(data$ethnicity, levels = c(1,2,3,4,5), labels = c("Mexican American", "Other Hispanic", "Non-Hispanic White", "Non-Hispanic Black", "Other"))
+data$education <- factor(data$education, levels = c(1,2,3,4,5,7,9), labels = c("Less than 9th grade", "9-11th Grade", "High School/GED", "Some college", "College Graduate or above", "Refused", "Don't Know"))
+data$marital_status <- factor(data$marital_status, levels = c(1,2,3,4,5,6,77,99), labels = c("Married", "Widowed", "Divorced", "Separated", "Never Married", "Living with partner", "Refused", "Don't know"))
+data$born_outside_us <- factor(data$born_outside_us, levels = c(1,2,4,5,7,9), labels = c("Born in US", "Born in Mexico", "Born in other spanish speaking country", "Born in other non-spanish speaking country", "Refused", "Don't know"))
+data$poverty_level_category <- factor(data$poverty_level_category, c(1,2,3,7,9), c("Poverty Index <= 1.3", "Poverty Index in (1.30, 1.85)", "Poverty Index > 1.85", "Refused", "Don't know"))
+data$health_insurance <- factor(data$health_insurance, c(1,2,7,9), c("Yes", "No", "Refused", "Don't know"))
+data$private_insurance <- factor(data$private_insurance, c(14,77,99), c("Covered", "Refused", "Don't Know"))
+data$medicare <- factor(data$medicare, c(15), c("Covered"))
+data$medicaid <- factor(data$medicaid, c(17), c("Covered"))
+data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5,77,99), c("None", "1", "2 to 3", "4 to 9", "10 to 12", "13 or more", "Refused" , "Don't know"))
+data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+data$food_stamps_past_yr <- factor(data$food_stamps_past_yr, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+#data$num_months_WIC targeted 0-11 years
+
+
+```
+
+
+```{r}
+sumtable(data)
+```
