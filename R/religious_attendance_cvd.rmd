@@ -112,10 +112,7 @@ xpt <- foreign::read.xport("../Data/DR1IFF_E.xpt") %>%
 data <- merge(data, xpt, by = "SEQN", all.x = TRUE)
 
 #write.csv(data, "../Data/nhanes0708.csv")
-```
 
-
-```{r}
 data$gender <- factor(data$gender,levels = c(1,2), labels = c("Male", "Female"))
 data$ethnicity <- factor(data$ethnicity, levels = c(1,2,3,4,5), labels = c("Mexican American", "Other Hispanic", "Non-Hispanic White", "Non-Hispanic Black", "Other"))
 data$education <- factor(data$education, levels = c(1,2,3,4,5,7,9), labels = c("Less than 9th grade", "9-11th Grade", "High School/GED", "Some college", "College Graduate or above", "Refused", "Don't Know"))
@@ -130,11 +127,32 @@ data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5,7
 data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
 data$food_stamps_past_yr <- factor(data$food_stamps_past_yr, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
 #data$num_months_WIC targeted 0-11 years
+data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(1,2,3,7,9), c("Often True", "Sometimes true", "Never true", "Refused", "Don't Know"))
+data$food_ran_out <- factor(data$food_ran_out, c(1,2,3,7,9), c("Often True", "Sometimes true", "Never true", "Refused", "Don't Know"))
+data$mobility_limit <- factor(data$mobility_limit, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+data$high_blood_pressure <- factor(data$high_blood_pressure, c(1,2,7,9), c("Yes", "No", "Don't Know", "Refused"))
+data$tobacco_use_5_days <- factor(data$tobacco_use_5_days, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+data$heart_attack <- factor(data$heart_attack, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+data$stroke <- factor(data$stroke, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
 
+#Religious Attendance
+#data <- data %>% 
+#  mutate(religious_attendance = case_when())
 
 ```
 
 
 ```{r}
+data <- data %>% 
+  filter(age >= 20)
 sumtable(data)
 ```
+
+```{r}
+data %>% 
+  filter(religious_attendance < 500) %>% 
+ggplot(aes(x = religious_attendance, y = SEQN)) +
+  geom_point()
+```
+
