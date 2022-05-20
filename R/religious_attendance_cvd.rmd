@@ -3,15 +3,17 @@ title: "Religious Attendance and CVD"
 output: html_notebook
 ---
 
+```{r, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
 ```{r}
 library(foreign)
 library(tidyverse)
 library(scales)
-library(DT)
+library(kableExtra)
 library(vtable)
 ```
-
-# Import data
 
 ```{r}
 #demo
@@ -140,19 +142,55 @@ data$stroke <- factor(data$stroke, c(1,2,7,9), c("Yes", "No", "Refused", "Don't 
 #data <- data %>% 
 #  mutate(religious_attendance = case_when())
 
-```
-
-
-```{r}
+#fasting glucose
 data <- data %>% 
-  filter(age >= 20)
-sumtable(data)
+  mutate(fasting_glucose = case_when(
+    fasting_glucose < 4.675 ~ "At Risk",
+    fasting_glucose >= 4.675 & fasting_glucose <= 5.445 ~ "Not at Risk",
+    fasting_glucose >5.445 ~ "At Risk"
+  ))
+
 ```
+# Summary Tables
+
+```{r, warning=FALSE, message=FALSE, warn = FALSE}
+data2 <- data %>% 
+  filter(age >= 20) %>% 
+  select(SEQN, age, poverty_level_index, religious_attendance, calories)
+
+sumtable(data2, out = "kable") %>% 
+  kable_styling("striped")
+
+data2 <- data %>% 
+  filter(age >= 20) %>% 
+  select(-c(age, poverty_level_index, religious_attendance, calories))
+
+sumtable(data2, out = "kable") %>% 
+  kable_styling("striped")
+```
+
+# Religious Attendance
 
 ```{r}
 data %>% 
-  filter(religious_attendance < 500) %>% 
+  filter(religious_attendance < 7777) %>% 
 ggplot(aes(x = religious_attendance, y = SEQN)) +
-  geom_point()
+  geom_point() +
+  scale_x_continuous(breaks = seq(0,1850,100)) + 
+  labs(y = "", x = "", title = "How often do you attend church/religious services?") +
+  theme_minimal() + 
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+data %>% 
+  filter(religious_attendance < 7777) %>% 
+ggplot(aes(x = religious_attendance, y = SEQN)) +
+  geom_point() +
+  scale_x_continuous(breaks = seq(0,1850,100)) + 
+  labs(y = "", x = "", title = "How often do you attend church/religious services?") +
+  theme_minimal() + 
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())+ 
+  geom_vline(xintercept = 52, color = "red", size = 1) + 
+  geom_vline(xintercept = 365, color = "red", size = 1)
 ```
+
 
