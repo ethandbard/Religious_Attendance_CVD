@@ -108,7 +108,7 @@ xpt <- foreign::read.xport("../Data/DR1IFF_E.xpt") %>%
   select(SEQN, DR1IKCAL) %>% 
   group_by(SEQN) %>% 
   summarise(SEQN = SEQN,
-            calories = mean(DR1IKCAL, na.rm = T)) %>% 
+            calories = mean(DR1IKCAL * 1000, na.rm = T)) %>% 
   distinct()
 
 data <- merge(data, xpt, by = "SEQN", all.x = TRUE)
@@ -116,7 +116,14 @@ data <- merge(data, xpt, by = "SEQN", all.x = TRUE)
 #write.csv(data, "../Data/nhanes0708.csv")
 
 data$gender <- factor(data$gender,levels = c(1,2), labels = c("Male", "Female"))
-data$ethnicity <- factor(data$ethnicity, levels = c(1,2,3,4,5), labels = c("Mexican American", "Other Hispanic", "Non-Hispanic White", "Non-Hispanic Black", "Other"))
+
+data <- data %>% 
+  mutate(ethnicity = case_when(
+    ethnicity %in% c(1,2) ~ 1,
+    TRUE ~ as.double(ethnicity)
+  ))
+
+data$ethnicity <- factor(data$ethnicity, levels = c(1,3,4,5), labels = c("Hispanic", "Non-Hispanic White", "Non-Hispanic Black", "Other"))
 
 data$education <- factor(data$education, levels = c(1,2,3,4,5,7,9), labels = c("Less than 9th grade", "9-11th Grade", "High School/GED", "Some college", "College Graduate or above", "Refused", "Don't Know"))
 
@@ -190,6 +197,10 @@ data <- data %>%
     fasting_glucose >5.445 ~ "At Risk"
   ))
 
+
+#data <- data %>% 
+#  mutate(calories = calories*1000)
+
 ```
 # Summary Tables
 
@@ -253,6 +264,13 @@ ggplot(aes(x = religious_attendance, y = SEQN, color = stroke)) +
   scale_color_manual(values = c("Red",  "Black", "Gray"))
 ```
 
+
+
+```{r}
+table(data$health_insurance, data$private_insurance)
+```
+
+
 ```{r}
 table(data$health_insurance, data$private_insurance, data$medicare, data$medicaid)
 ```
@@ -261,8 +279,21 @@ table(data$health_insurance, data$private_insurance, data$medicare, data$medicai
 data %>% 
   filter(health_insurance == "Yes", private_insurance == "Covered", medicare == "Covered", medicaid == "Covered")
 ```
+
 ```{r}
 table(data$ever_received_food_stamps, data$food_stamps_past_yr)
-chisq.test(data$ever_received_food_stamps, data$food_stamps_past_yr)
 ```
+
+
+```{r}
+data %>% 
+  ggplot(aes(x = ever_received_food_stamps, fill = food_stamps_past_yr)) + 
+  geom_bar(stat = "count", position = "stack") + 
+  theme_minimal() 
+```
+
+
+```{r}
+```
+
 
