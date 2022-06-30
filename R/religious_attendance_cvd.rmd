@@ -11,8 +11,8 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(kableExtra)
 library(gtsummary)
-library(texreg)
-library(arm)
+#library(texreg)
+#library(arm)
 ```
 
 ```{r}
@@ -96,7 +96,7 @@ data <- data %>%
   ))
 
 #risk_glucose
-data$fasting_glucose <- factor(data$fasting_glucose, levels = c("Unknown","Not at Risk", "At Risk"), c("Unknown","Not at Risk", "At Risk"))
+data$fasting_glucose <- factor(data$fasting_glucose, levels = c("Not at Risk", "At Risk"), c("Not at Risk", "At Risk"))
 data <- data %>% 
   mutate(risk_glucose = case_when(
     fasting_glucose == "At Risk" ~ 1,
@@ -156,7 +156,7 @@ data <- data %>%
     TRUE ~ as.double(0)
   ))
 
-data$type_of_drinker <- factor(data$type_of_drinker, c("NA", "Abstainer", "Harmful", "Moderate"), c("NA", "Abstainer", "Harmful", "Moderate"))
+data$type_of_drinker <- factor(data$type_of_drinker, c("Abstainer", "Harmful", "Moderate"), c("Abstainer", "Harmful", "Moderate"))
 
 
 
@@ -194,7 +194,7 @@ data <- data %>%
 
 data$ethnicity <- factor(data$ethnicity, levels = c(3,1,4,5), labels = c( "Non-Hispanic White", "Hispanic", "Non-Hispanic Black", "Other"))
 
-data$education <- factor(data$education, levels = c(1,2,3,4,5,7,9), labels = c("Less than 9th grade", "9-11th Grade", "High School/GED", "Some college", "College Graduate or above", "Refused", "Don't Know"))
+data$education <- factor(data$education, levels = c(1,2,3,4,5), labels = c("Less than 9th grade", "9-11th Grade", "High School/GED", "Some college", "College Graduate or above"))
 
 data <- data %>% 
   mutate(education = case_when(
@@ -202,9 +202,9 @@ data <- data %>%
     TRUE ~ as.character(education)
   ))
 
-data$education <- factor(data$education, levels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above", "Refused", "Don't Know"), labels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above", "Refused", "Don't Know"))
+data$education <- factor(data$education, levels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above"), labels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above"))
 
-data$marital_status <- factor(data$marital_status, levels = c(1,2,3,4,5,6,77,99), labels = c("Married", "Widowed", "Divorced", "Separated", "Never Married", "Living with partner", "Refused", "Don't know"))
+data$marital_status <- factor(data$marital_status, levels = c(1,2,3,4,5,6), labels = c("Married", "Widowed", "Divorced", "Separated", "Never Married", "Living with partner"))
 
 data <- data %>% 
   mutate(marital_status = case_when(
@@ -217,7 +217,7 @@ data$marital_status <- factor(data$marital_status, levels = c("Never Married", "
                               labels = c("Never Married", "Married", "Previously Married", "Refused", "Don't Know"))
 
 
-data$born_outside_us <- factor(data$born_outside_us, levels = c(1,2,4,5,7,9), labels = c("Born in US", "Born in Mexico", "Born in other spanish speaking country", "Born in other non-spanish speaking country", "Refused", "Don't know"))
+data$born_outside_us <- factor(data$born_outside_us, levels = c(1,2,4,5), labels = c("Born in US", "Born in Mexico", "Born in other spanish speaking country", "Born in other non-spanish speaking country"))
 
 data <- data %>% 
   mutate(born_outside_us = case_when(
@@ -225,10 +225,10 @@ data <- data %>%
     TRUE ~ as.character(born_outside_us)
   ))
 
-data$born_outside_us <- factor(data$born_outside_us, levels = c("Born in US", "Born outside US", "Refused", "Don't Know"), labels = c("Born in US", "Born outside US", "Refused", "Don't Know"))
+data$born_outside_us <- factor(data$born_outside_us, levels = c("Born in US", "Born outside US"), labels = c("Born in US", "Born outside US"))
 
 
-data$poverty_level_category <- factor(data$poverty_level_category, c(1,2,3,7,9), c("Poverty Index <= 1.3", "Poverty Index in (1.30, 1.85)", "Poverty Index > 1.85", "Refused", "Don't know"))
+data$poverty_level_category <- factor(data$poverty_level_category, c(1,2,3), c("Poverty Index <= 1.3", "Poverty Index in (1.30, 1.85)", "Poverty Index > 1.85"))
 
 data <- data %>% 
   mutate(health_insurance = case_when(
@@ -254,18 +254,18 @@ data <- data %>%
     TRUE ~ as.character(medicaid)
   ))
 
-data$health_insurance <- factor(data$health_insurance, c("Unknown", "1","2","7","9"), c("Unknown", "Yes", "No", "Refused", "Don't know"))
-data$private_insurance <- factor(data$private_insurance, c("Unknown", "14","77","99"), c("Unknown", "Covered", "Refused", "Don't Know"))
-data$medicare <- factor(data$medicare, c("Unknown", "15"), c("Unknown", "Covered"))
-data$medicaid <- factor(data$medicaid, c("Unknown", "17"), c("Unknown", "Covered"))
-data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5,77,99), c("None", "1", "2 to 3", "4 to 9", "10 to 12", "13 or more", "Refused" , "Don't know"))
-data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+data$health_insurance <- factor(data$health_insurance, c("1","2"), c("Yes", "No"))
+data$private_insurance <- factor(data$private_insurance, c("14"), c("Covered"))
+data$medicare <- factor(data$medicare, c("15"), c("Covered"))
+data$medicaid <- factor(data$medicaid, c("17"), c("Covered"))
+data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5), c("None", "1", "2 to 3", "4 to 9", "10 to 12", "13 or more"))
+data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2), c("Yes", "No"))
 #data$food_stamps_past_yr <- factor(data$food_stamps_past_yr, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
 #data$num_months_WIC targeted 0-11 years
-data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(1,2,3,7,9), c("Often True", "Sometimes true", "Never true", "Refused", "Don't Know"))
-data$food_ran_out <- factor(data$food_ran_out, c(1,2,3,7,9), c("Often True", "Sometimes true", "Never true", "Refused", "Don't Know"))
-data$mobility_limit <- factor(data$mobility_limit, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
-data$high_blood_pressure <- factor(data$high_blood_pressure, c(1,2,7,9), c("Yes", "No", "Don't Know", "Refused"))
+data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
+data$food_ran_out <- factor(data$food_ran_out, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
+data$mobility_limit <- factor(data$mobility_limit, c(1,2), c("Yes", "No"))
+data$high_blood_pressure <- factor(data$high_blood_pressure, c(1,2), c("Yes", "No"))
 
 #risk_tobacco
 data <- data %>% 
@@ -279,12 +279,12 @@ data <- data %>%
     tobacco_use_5_days == "Yes" ~ 1,
     TRUE ~ as.double(0)
   ))
-data$tobacco_use_5_days <- factor(data$tobacco_use_5_days, c("Unknown", "Yes", "No"), c("Unknown","Yes", "No"))
+data$tobacco_use_5_days <- factor(data$tobacco_use_5_days, c("Yes", "No"), c("Yes", "No"))
 
 
-data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
-data$heart_attack <- factor(data$heart_attack, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
-data$stroke <- factor(data$stroke, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
+data$heart_attack <- factor(data$heart_attack, c(1,2), c("Yes", "No"))
+data$stroke <- factor(data$stroke, c(1,2), c("Yes", "No"))
 
 #Religious Attendance
 data <- data %>% 
@@ -296,7 +296,7 @@ data <- data %>%
     TRUE ~ as.character(religious_attendance)
   ))
 
-data$religious_attendance <- factor(data$religious_attendance, levels = c("Less than Weekly", "Weekly", "More than Weekly", "NA"), labels = c("Less than Weekly", "Weekly", "More than Weekly", "NA"))
+data$religious_attendance <- factor(data$religious_attendance, levels = c("Less than Weekly", "Weekly", "More than Weekly"), labels = c("Less than Weekly", "Weekly", "More than Weekly"))
 
 
 
@@ -331,64 +331,43 @@ data2 <- data %>%
   dplyr::filter(age >= 20) %>% 
   dplyr::select(SEQN, age, poverty_level_index, religious_attendance)
 
-sumtable(data2, out = "kable") %>% 
+sumtable(data2, out = "kable", summ = c('notNa(x)','mean(x)'), summ.names = c("N", "Mean")) %>% 
   kable_styling("striped")
 
 data2 <- data %>% 
   dplyr::filter(age >= 20) %>% 
   dplyr::select(-c(age, poverty_level_index, religious_attendance))
 
-sumtable(data2, out = "kable") %>% 
+sumtable(data2, out = "kable", summ = c('notNa(x)','mean(x)'), summ.names = c("N", "Mean")) %>% 
   kable_styling("striped")
 ```
-
-
-
-```{r}
-table(data$health_insurance, data$private_insurance, data$medicaid, data$medicare)
-```
-
-```{r}
-chisq.test(data$health_insurance, data$private_insurance)
-```
-
-```{r}
-chisq.test(data$health_insurance, data$medicare)
-```
-
-```{r}
-chisq.test(data$health_insurance, data$medicaid)
-```
-
 
 # Logistic Regression Models
 
 ```{r}
 #heart attack
-heart_model <- glm(heart_attack ~ gender + age + rfm + ethnicity + high_blood_pressure + religious_attendance + education + marital_status + born_outside_us
+heart_model <- glm(heart_attack ~ gender + age + rfm + ethnicity + high_blood_pressure + religious_attendance + education + marital_status 
                      + poverty_level_category + num_healthcare_visits + ever_received_food_stamps + worried_house_run_out_food + food_ran_out +
                      mobility_limit + fasting_glucose + tobacco_use_5_days + type_of_drinker, data = data, family = "binomial")
 
 summary(heart_model)
 
 #Stroke
-stroke_model <- glm(stroke ~ gender + age + rfm + ethnicity + high_blood_pressure + religious_attendance + education + marital_status + born_outside_us + poverty_level_category + num_healthcare_visits + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + mobility_limit + fasting_glucose + tobacco_use_5_days + type_of_drinker, data = data, family = "binomial")
+stroke_model <- glm(stroke ~ gender + age + rfm + ethnicity + high_blood_pressure + religious_attendance + education + marital_status +  poverty_level_category + num_healthcare_visits + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + mobility_limit + fasting_glucose + tobacco_use_5_days + type_of_drinker, data = data, family = "binomial")
 
 summary(stroke_model)
 ```
 
 ```{r}
 #Social determinant model 
-social_heart <- glm(heart_attack ~ gender + age + ethnicity + education + marital_status + born_outside_us
-                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out +
-                     risk_sum, data = data, family = "binomial")
+social_heart <- glm(heart_attack ~ gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out, data = data, family = "binomial")
 
 summary(social_heart)
 
 
-social_stroke <- glm(stroke ~gender + age + ethnicity + education + marital_status + born_outside_us
-                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out +
-                     risk_sum, data = data, family = "binomial")
+social_stroke <- glm(stroke ~gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out, data = data, family = "binomial")
 
 summary(social_stroke)
 
@@ -396,10 +375,6 @@ summary(social_stroke)
 
 #religious
 ```
-
-heart_attack ~ gender + age + rfm + ethnicity + high_blood_pressure + religious_attendance + education + marital_status + born_outside_us
-                     + poverty_level_category + num_healthcare_visits + ever_received_food_stamps + worried_house_run_out_food + food_ran_out +
-                     mobility_limit + fasting_glucose + tobacco_use_5_days + type_of_drinker
 
 ```{r}
 health_heart <- glm(heart_attack ~ rfm + num_healthcare_visits + health_insurance + risk_sum, data = data, family = "binomial")
@@ -410,43 +385,73 @@ summary(health_stroke)
 ```
 
 ```{r}
-relig_heart <- glm(heart_attack ~ religious_attendance + risk_sum, data = data, family = "binomial")
+relig_heart <- glm(heart_attack ~ religious_attendance, data = data, family = "binomial")
 summary(relig_heart)
 
-relig_stroke <- glm(stroke ~religious_attendance + risk_sum, data = data, family = "binomial")
+relig_stroke <- glm(stroke ~religious_attendance, data = data, family = "binomial")
 summary(relig_stroke)
 ```
 
 ```{r, warn = FALSE, warning = FALSE}
 #make tables
-library(broom)
-library(parameters)
+#library(broom)
+#library(parameters)
 social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
   modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
-  bold_p(t = 0.05)
+  bold_p(t = 0.05)  
 
-social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>% 
+social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
   modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
 
 health_heart_tbl <- tbl_regression(health_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
   modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = FALSE) %>% 
+health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = FALSE) %>%
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
   modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
 
 relig_heart_tbl <- tbl_regression(relig_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
   modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
 
 relig_stroke_tbl <- tbl_regression(relig_stroke, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
   modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
