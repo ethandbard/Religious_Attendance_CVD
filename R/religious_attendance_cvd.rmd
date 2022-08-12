@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(kableExtra)
 library(gtsummary)
+library(foreign)
 #library(texreg)
 #library(arm)
 ```
@@ -254,10 +255,11 @@ data <- data %>%
     TRUE ~ as.character(medicaid)
   ))
 
-data$health_insurance <- factor(data$health_insurance, c("1","2"), c("Yes", "No"))
-data$private_insurance <- factor(data$private_insurance, c("14"), c("Covered"))
-data$medicare <- factor(data$medicare, c("15"), c("Covered"))
-data$medicaid <- factor(data$medicaid, c("17"), c("Covered"))
+data$health_insurance <- factor(data$health_insurance, c("2","1"), c("Not Covered", "Covered"))
+data$private_insurance <- factor(data$private_insurance, c("Unknown", "14"), c("Not Covered", "Covered"))
+data$medicare <- factor(data$medicare, c( "Unknown","15"), c("Not Covered", "Covered"))
+data$medicaid <- factor(data$medicaid, c( "Unknown", "17"), c("Not Covered", "Covered"))
+
 data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5), c("None", "1", "2 to 3", "4 to 9", "10 to 12", "13 or more"))
 data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2), c("Yes", "No"))
 #data$food_stamps_past_yr <- factor(data$food_stamps_past_yr, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
@@ -266,6 +268,7 @@ data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(1,2
 data$food_ran_out <- factor(data$food_ran_out, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
 data$mobility_limit <- factor(data$mobility_limit, c(1,2), c("Yes", "No"))
 data$high_blood_pressure <- factor(data$high_blood_pressure, c(1,2), c("Yes", "No"))
+
 
 #risk_tobacco
 data <- data %>% 
@@ -288,13 +291,14 @@ data$stroke <- factor(data$stroke, c(1,2), c("Yes", "No"))
 
 #Religious Attendance
 data <- data %>% 
-  mutate(religious_attendance = case_when(
-    religious_attendance < 50 ~ "Less than Weekly",
-    religious_attendance %in% c(50,51,52) ~ "Weekly",
-    religious_attendance > 52 & religious_attendance < 7777 ~ "More than Weekly",
-    religious_attendance >= 7777 ~ "NA",
-    TRUE ~ as.character(religious_attendance)
-  ))
+  mutate(religious_attendance_num = religious_attendance,
+          religious_attendance = case_when(
+          religious_attendance < 50 ~ "Less than Weekly",
+          religious_attendance %in% c(50,51,52) ~ "Weekly",
+          religious_attendance > 52 & religious_attendance < 7777 ~ "More than   Weekly",
+          religious_attendance >= 7777 ~ "NA",
+          TRUE ~ as.character(religious_attendance)
+        ))
 
 data$religious_attendance <- factor(data$religious_attendance, levels = c("Less than Weekly", "Weekly", "More than Weekly"), labels = c("Less than Weekly", "Weekly", "More than Weekly"))
 
@@ -315,34 +319,48 @@ data <- data %>%
   ))
 
 data <- data %>% 
+  mutate(risk_rfm = case_when(
+    gender == "Male" & rfm >= 30 ~ 1,
+    gender == "Female" & rfm >= 40 ~ 1,
+    TRUE ~ as.numeric(0)
+  ))
+
+data <- data %>% 
   group_by(SEQN) %>% 
-  mutate(risk_sum = sum(risk_glucose, risk_mobility, risk_bp, risk_tobacaco, risk_alcohol))
+  mutate(risk_sum = sum(risk_glucose, risk_mobility, risk_bp, risk_tobacaco, risk_alcohol, risk_rfm))
+
 
 data$risk_sum <- factor(data$risk_sum)
 
-write.csv(data, "../Data/nhanes0708.csv")
+data <- data %>% 
+  filter(age >= 20)
+
+write.foreign(df=data, datafile="../Data/nhanes0708.csv", codefile="../Data/nhanes0708.sas", package="SAS")
+write.csv(data, "../Data/nhanes0708.csv") 
 ```
+
 # Summary Tables
 
 ```{r, warning=FALSE, message=FALSE, warn = FALSE}
 library(vtable)
 
 data2 <- data %>% 
-  dplyr::filter(age >= 20) %>% 
   dplyr::select(SEQN, age, poverty_level_index, religious_attendance)
 
-sumtable(data2, out = "kable", summ = c('notNa(x)','mean(x)'), summ.names = c("N", "Mean")) %>% 
+sumtable(data2, out = "kable", summ = c('notNa(x)','(notNa(x)/sum(x,na.rm = TRUE))', 'mean(x)') , summ.names = c("N", 'Percent', "Mean")) %>% 
   kable_styling("striped")
 
 data2 <- data %>% 
-  dplyr::filter(age >= 20) %>% 
   dplyr::select(-c(age, poverty_level_index, religious_attendance))
 
-sumtable(data2, out = "kable", summ = c('notNa(x)','mean(x)'), summ.names = c("N", "Mean")) %>% 
+sumtable(data2, out = "kable", summ = c('notNa(x)','notNa(x)/sum(x,na.rm = TRUE)','mean(x)'), summ.names = c("N", 'Percent', "Mean")) %>% 
   kable_styling("striped")
 ```
 
 # Logistic Regression Models
+
+
+### Heart attack and stroke models with all variables
 
 ```{r}
 #heart attack
@@ -358,16 +376,18 @@ stroke_model <- glm(stroke ~ gender + age + rfm + ethnicity + high_blood_pressur
 summary(stroke_model)
 ```
 
+### Heart attack and stroke models using social demographics
+
 ```{r}
 #Social determinant model 
 social_heart <- glm(heart_attack ~ gender + age + ethnicity + education + marital_status
-                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out, data = data, family = "binomial")
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid, data = data, family = "binomial")
 
 summary(social_heart)
 
 
 social_stroke <- glm(stroke ~gender + age + ethnicity + education + marital_status
-                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out, data = data, family = "binomial")
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid, data = data, family = "binomial")
 
 summary(social_stroke)
 
@@ -376,13 +396,17 @@ summary(social_stroke)
 #religious
 ```
 
+### Heart attack and stroke models using health variables
+
 ```{r}
-health_heart <- glm(heart_attack ~ rfm + num_healthcare_visits + health_insurance + risk_sum, data = data, family = "binomial")
+health_heart <- glm(heart_attack ~ num_healthcare_visits + risk_sum, data = data, family = "binomial")
 summary(health_heart)
 
-health_stroke <- glm(stroke ~ rfm + num_healthcare_visits + health_insurance + risk_sum, data = data, family = "binomial")
+health_stroke <- glm(stroke ~ num_healthcare_visits + risk_sum, data = data, family = "binomial")
 summary(health_stroke)
 ```
+
+### Heart attack and stroke models using religious attendance alone
 
 ```{r}
 relig_heart <- glm(heart_attack ~ religious_attendance, data = data, family = "binomial")
@@ -457,13 +481,310 @@ relig_stroke_tbl <- tbl_regression(relig_stroke, exponentiate = FALSE) %>%
   bold_p(t = 0.05)
 ```
 
+### Heart Attack models
+
 ```{r}
 tbl_merge(tbls = list(social_heart_tbl, health_heart_tbl, relig_heart_tbl),
           tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))
 ```
+
+
+### Stroke models
 
 ```{r}
 tbl_merge(tbls = list(social_stroke_tbl, health_stroke_tbl, relig_stroke_tbl),
           tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))
 ```
 
+# Step Wise Logistic Regression
+
+### Social 
+```{r}
+#social data
+social <- data %>% 
+  select(heart_attack, stroke, gender, age, ethnicity, education, marital_status, poverty_level_category, ever_received_food_stamps, worried_house_run_out_food, health_insurance, private_insurance, medicare, medicaid, food_ran_out) %>% 
+  na.omit()
+
+social_heart <- glm(heart_attack ~ gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid, data = social, family = "binomial")
+
+social_stroke <- glm(stroke ~gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid, data = social, family = "binomial")
+
+summary(step(social_heart, trace = 0))
+summary(step(social_stroke, trace = 0))
+```
+
+### Health
+
+```{r}
+#health data
+health <- data %>% 
+  select(heart_attack, stroke, rfm, num_healthcare_visits, risk_sum) %>% 
+  na.omit()
+
+health_heart <- glm(heart_attack ~ rfm + num_healthcare_visits + risk_sum, data = health, family = "binomial")
+
+health_stroke <- glm(stroke ~ rfm + num_healthcare_visits + risk_sum, data = health, family = "binomial")
+
+summary(step(health_heart, trace=0))
+summary(step(health_stroke, trace=0))
+```
+
+### Religious attendance
+
+```{r}
+#religious data
+religion <- data %>% 
+  select(heart_attack, stroke, religious_attendance) %>% 
+  na.omit()
+
+religion_heart <- glm(heart_attack ~ religious_attendance, data = religion, family = "binomial")
+
+religion_stroke <- glm(stroke ~ religious_attendance, data = religion, family = "binomial")
+
+summary(step(religion_heart, trace=0))
+summary(step(religion_stroke, trace =0))
+```
+
+```{r, warn = FALSE, warning = FALSE}
+#make tables
+social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+health_heart_tbl <- tbl_regression(health_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = FALSE) %>%
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+relig_heart_tbl <- tbl_regression(religion_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+relig_stroke_tbl <- tbl_regression(religion_stroke, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+```
+
+### Heart attack models
+
+```{r}
+tbl_merge(tbls = list(social_heart_tbl, health_heart_tbl, relig_heart_tbl),
+          tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))
+```
+
+### Stroke models
+
+
+```{r}
+tbl_merge(tbls = list(social_stroke_tbl, health_stroke_tbl, relig_stroke_tbl),
+          tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))
+```
+
+# Religious Attendance
+
+```{r}
+data_cat <- data %>% 
+  select(-c(SEQN, age, born_outside_us, poverty_level_index, FSQ171,num_months_WIC, risk_mobility, risk_bp, risk_glucose, avg_drinks_daily_past_yr, num_drinks_past_yr,num_drinks_past_yr_unit, num_days_5_drinks_or_more, ALQ140U, had_12_drinks_lifetime, num_drinks_weekly,risk_alcohol, risk_tobacaco, religious_attendance_num, weight, height, waist, rfm, risk_sum, risk_rfm)) %>%  na.omit()
+
+data.frame(Variables = colnames(data_cat),
+           P = c(NA,
+                 (chisq.test(data_cat$religious_attendance, data_cat$gender)[[3]]),
+                 chisq.test(data_cat$religious_attendance, data_cat$ethnicity)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$education)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$marital_status)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$poverty_level_category)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$health_insurance)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$private_insurance)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$medicare)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$medicaid)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$num_healthcare_visits)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$ever_received_food_stamps)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$worried_house_run_out_food)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$food_ran_out)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$mobility_limit)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$high_blood_pressure)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$fasting_glucose)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$tobacco_use_5_days)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$had_12_drinks_in_1yr)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$type_of_drinker)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$religious_attendance)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$heart_attack)[[3]],
+                 chisq.test(data_cat$religious_attendance, data_cat$stroke)[[3]]
+                 )) %>% 
+  mutate(`.05` = case_when(
+    P <= 0.05 ~ "*",
+    TRUE ~ as.character(".")
+  )) %>% 
+  kable() %>% 
+  kable_styling("striped")
+```
+
+# Cumulative Models
+
+### Social
+
+```{r}
+social_heart <- glm(heart_attack ~ gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid, data = data, family = "binomial")
+
+summary(social_heart)
+
+
+social_stroke <- glm(stroke ~gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid, data = data, family = "binomial")
+
+summary(social_stroke)
+```
+
+### Social + Health
+
+```{r}
+social_health_heart <- glm(heart_attack ~ gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid + num_healthcare_visits + risk_sum, data = data, family = "binomial")
+
+summary(social_heart)
+
+
+social_health_stroke <- glm(stroke ~gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid + num_healthcare_visits + risk_sum, data = data, family = "binomial")
+
+summary(social_stroke)
+```
+
+### Social + Health + Religion
+
+```{r}
+social_health_rel_heart <- glm(heart_attack ~ gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid + num_healthcare_visits + risk_sum + religious_attendance, data = data, family = "binomial")
+
+summary(social_heart)
+
+
+social_health_rel_stroke <- glm(stroke ~gender + age + ethnicity + education + marital_status
+                     + poverty_level_category + ever_received_food_stamps + worried_house_run_out_food + food_ran_out + health_insurance + private_insurance + medicare + medicaid + num_healthcare_visits + risk_sum + religious_attendance, data = data, family = "binomial")
+
+summary(social_stroke)
+```
+
+```{r}
+#make tables
+social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+social_health_heart_tbl <- tbl_regression(social_health_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+social_health_stroke_tbl <- tbl_regression(social_health_stroke, exponentiate = FALSE) %>%
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+social_health_rel_heart_tbl <- tbl_regression(social_health_rel_heart, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+social_health_rel_stroke_tbl <- tbl_regression(social_health_rel_stroke, exponentiate = FALSE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+```
+
+
+### Heart Attack Cumulative Models
+
+```{r}
+tbl_merge(tbls = list(social_heart_tbl, social_health_heart_tbl, social_health_rel_heart_tbl),
+          tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))
+```
+
+### Stroke Cumulative Models
+
+```{r}
+tbl_merge(tbls = list(social_stroke_tbl, social_health_stroke_tbl, social_health_rel_stroke_tbl),
+          tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))Methods
+```
