@@ -788,3 +788,5 @@ tbl_merge(tbls = list(social_heart_tbl, social_health_heart_tbl, social_health_r
 tbl_merge(tbls = list(social_stroke_tbl, social_health_stroke_tbl, social_health_rel_stroke_tbl),
           tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))Methods
 ```
+
+
