@@ -286,6 +286,10 @@ data$tobacco_use_5_days <- factor(data$tobacco_use_5_days, c("Yes", "No"), c("Ye
 
 
 data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
+
+data$heart_attack_num <- data$heart_attack
+data$stroke_num <- data$stroke
+
 data$heart_attack <- factor(data$heart_attack, c(1,2), c("Yes", "No"))
 data$stroke <- factor(data$stroke, c(1,2), c("Yes", "No"))
 
@@ -420,7 +424,7 @@ summary(relig_stroke)
 #make tables
 #library(broom)
 #library(parameters)
-social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>% 
+social_heart_tbl <- tbl_regression(social_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -430,7 +434,7 @@ social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)  
 
-social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
+social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = TRUE) %>%
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -440,7 +444,7 @@ social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-health_heart_tbl <- tbl_regression(health_heart, exponentiate = FALSE) %>% 
+health_heart_tbl <- tbl_regression(health_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -450,7 +454,7 @@ health_heart_tbl <- tbl_regression(health_heart, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = FALSE) %>%
+health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = TRUE) %>%
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -460,7 +464,7 @@ health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-relig_heart_tbl <- tbl_regression(relig_heart, exponentiate = FALSE) %>% 
+relig_heart_tbl <- tbl_regression(relig_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -470,7 +474,7 @@ relig_heart_tbl <- tbl_regression(relig_heart, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-relig_stroke_tbl <- tbl_regression(relig_stroke, exponentiate = FALSE) %>% 
+relig_stroke_tbl <- tbl_regression(relig_stroke, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -549,7 +553,7 @@ summary(step(religion_stroke, trace =0))
 
 ```{r, warn = FALSE, warning = FALSE}
 #make tables
-social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>% 
+social_heart_tbl <- tbl_regression(social_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -559,7 +563,7 @@ social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)  
 
-social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
+social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = TRUE) %>%
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -569,7 +573,7 @@ social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-health_heart_tbl <- tbl_regression(health_heart, exponentiate = FALSE) %>% 
+health_heart_tbl <- tbl_regression(health_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -579,7 +583,7 @@ health_heart_tbl <- tbl_regression(health_heart, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = FALSE) %>%
+health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = TRUE) %>%
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -589,7 +593,7 @@ health_stroke_tbl <- tbl_regression(health_stroke, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-relig_heart_tbl <- tbl_regression(religion_heart, exponentiate = FALSE) %>% 
+relig_heart_tbl <- tbl_regression(religion_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -599,7 +603,7 @@ relig_heart_tbl <- tbl_regression(religion_heart, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-relig_stroke_tbl <- tbl_regression(religion_stroke, exponentiate = FALSE) %>% 
+relig_stroke_tbl <- tbl_regression(religion_stroke, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -629,7 +633,7 @@ tbl_merge(tbls = list(social_stroke_tbl, health_stroke_tbl, relig_stroke_tbl),
 
 ```{r}
 data_cat <- data %>% 
-  select(-c(SEQN, age, born_outside_us, poverty_level_index, FSQ171,num_months_WIC, risk_mobility, risk_bp, risk_glucose, avg_drinks_daily_past_yr, num_drinks_past_yr,num_drinks_past_yr_unit, num_days_5_drinks_or_more, ALQ140U, had_12_drinks_lifetime, num_drinks_weekly,risk_alcohol, risk_tobacaco, religious_attendance_num, weight, height, waist, rfm, risk_sum, risk_rfm)) %>%  na.omit()
+  select(-c(SEQN, age, born_outside_us, poverty_level_index, FSQ171,num_months_WIC, risk_mobility, risk_bp, risk_glucose, avg_drinks_daily_past_yr, num_drinks_past_yr,num_drinks_past_yr_unit, num_days_5_drinks_or_more, ALQ140U, had_12_drinks_lifetime, num_drinks_weekly,risk_alcohol, risk_tobacaco, religious_attendance_num, weight, height, waist, rfm, risk_sum, risk_rfm, heart_attack_num, stroke_num)) %>%  na.omit()
 
 data.frame(Variables = colnames(data_cat),
            P = c(NA,
@@ -713,7 +717,7 @@ summary(social_stroke)
 
 ```{r}
 #make tables
-social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>% 
+social_heart_tbl <- tbl_regression(social_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -723,7 +727,7 @@ social_heart_tbl <- tbl_regression(social_heart, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)  
 
-social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
+social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = TRUE) %>%
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -733,7 +737,7 @@ social_stroke_tbl <- tbl_regression(social_stroke, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-social_health_heart_tbl <- tbl_regression(social_health_heart, exponentiate = FALSE) %>% 
+social_health_heart_tbl <- tbl_regression(social_health_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -743,7 +747,7 @@ social_health_heart_tbl <- tbl_regression(social_health_heart, exponentiate = FA
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-social_health_stroke_tbl <- tbl_regression(social_health_stroke, exponentiate = FALSE) %>%
+social_health_stroke_tbl <- tbl_regression(social_health_stroke, exponentiate = TRUE) %>%
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -753,7 +757,7 @@ social_health_stroke_tbl <- tbl_regression(social_health_stroke, exponentiate = 
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-social_health_rel_heart_tbl <- tbl_regression(social_health_rel_heart, exponentiate = FALSE) %>% 
+social_health_rel_heart_tbl <- tbl_regression(social_health_rel_heart, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -763,7 +767,7 @@ social_health_rel_heart_tbl <- tbl_regression(social_health_rel_heart, exponenti
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-social_health_rel_stroke_tbl <- tbl_regression(social_health_rel_stroke, exponentiate = FALSE) %>% 
+social_health_rel_stroke_tbl <- tbl_regression(social_health_rel_stroke, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -786,7 +790,45 @@ tbl_merge(tbls = list(social_heart_tbl, social_health_heart_tbl, social_health_r
 
 ```{r}
 tbl_merge(tbls = list(social_stroke_tbl, social_health_stroke_tbl, social_health_rel_stroke_tbl),
-          tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))Methods
+          tab_spanner = c("Social Determinants", "Health and Behavior", "Religious Attendance"))
 ```
 
+# Odds Ratio validation
+
+```{r}
+glm(heart_attack ~ ethnicity, "binomial", data = data) %>% 
+  tbl_regression(exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Reference"
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+```
+
+```{r}
+glm(heart_attack ~ relevel(ethnicity, ref = 3), "binomial", data = data) %>% 
+  tbl_regression(exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Reference"
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+```
+
+
+# Age vs Cardiovascular Disease Correlation
+
+```{r}
+cor.test(data$heart_attack_num, data$age, method = c("pearson"))
+```
+
+```{r}
+cor.test(data$stroke_num, data$age, method = c("pearson"))
+```
 

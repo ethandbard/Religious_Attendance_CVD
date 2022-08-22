@@ -144,7 +144,7 @@ value risk_sum
 DATA  rdata ;
 INFILE  "../Data/nhanes0708.csv" 
      DSD 
-     LRECL= 164 ;
+     LRECL= 167 ;
 INPUT
  SEQN
  gender
@@ -186,6 +186,8 @@ INPUT
  heart_attack
  stroke
  risk_tobacaco
+ heart_attack_num
+ stroke_num
  religious_attendance_num
  weight
  height
