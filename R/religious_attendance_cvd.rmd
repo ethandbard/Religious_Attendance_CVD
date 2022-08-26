@@ -12,6 +12,7 @@ library(tidyverse)
 library(kableExtra)
 library(gtsummary)
 library(foreign)
+library(broom)
 #library(texreg)
 #library(arm)
 ```
@@ -832,3 +833,47 @@ cor.test(data$heart_attack_num, data$age, method = c("pearson"))
 cor.test(data$stroke_num, data$age, method = c("pearson"))
 ```
 
+```{r}
+ggplot(data, aes(x = age)) + 
+  geom_histogram(bins = 20,  fill = "white", color = "black") + 
+  theme_minimal() + 
+  labs(title = "Age Distribution of NHANES Participants")
+```
+
+
+# Visualizations
+
+```{r, warning = FALSE}
+heart_coefs <- tidy(heart_model, conf.int = TRUE) %>% 
+  filter(term != "(Intercept)")
+
+stroke_coefs <- tidy(stroke_model, conf.int = TRUE) %>% 
+  filter(term != "(Intercept)")
+```
+
+
+```{r}
+ggplot(heart_coefs,
+       aes(x = estimate, 
+           y = fct_rev(term))) +
+  geom_pointrange(aes(xmin = conf.low,
+                      xmax = conf.high)) + 
+  geom_vline(xintercept = 0,
+             color = "purple") +
+  theme_minimal() + 
+  ylab("") +
+  ggtitle("Heart Attack Coefficients")
+```
+
+```{r}
+ggplot(stroke_coefs,
+       aes(x = estimate, 
+           y = fct_rev(term))) +
+  geom_pointrange(aes(xmin = conf.low,
+                      xmax = conf.high)) + 
+  geom_vline(xintercept = 0,
+             color = "purple") +
+  theme_minimal() + 
+  ylab("") +
+  ggtitle("Stroke Coefficients")
+```
