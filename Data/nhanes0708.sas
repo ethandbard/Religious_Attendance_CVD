@@ -144,7 +144,7 @@ value risk_sum
 DATA  rdata ;
 INFILE  "../Data/nhanes0708.csv" 
      DSD 
-     LRECL= 167 ;
+     LRECL= 168 ;
 INPUT
  SEQN
  gender

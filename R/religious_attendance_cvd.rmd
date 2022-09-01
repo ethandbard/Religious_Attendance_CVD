@@ -12,10 +12,10 @@ library(tidyverse)
 library(kableExtra)
 library(gtsummary)
 library(foreign)
-library(broom)
-#library(texreg)
-#library(arm)
+library(knitr)
 ```
+
+# Data Mapping
 
 ```{r}
 #demo
@@ -353,7 +353,7 @@ data2 <- data %>%
   dplyr::select(SEQN, age, poverty_level_index, religious_attendance)
 
 sumtable(data2, out = "kable", summ = c('notNa(x)','(notNa(x)/sum(x,na.rm = TRUE))', 'mean(x)') , summ.names = c("N", 'Percent', "Mean")) %>% 
-  kable_styling("striped")
+  kable_paper()
 
 data2 <- data %>% 
   dplyr::select(-c(age, poverty_level_index, religious_attendance))
@@ -833,47 +833,22 @@ cor.test(data$heart_attack_num, data$age, method = c("pearson"))
 cor.test(data$stroke_num, data$age, method = c("pearson"))
 ```
 
-```{r}
-ggplot(data, aes(x = age)) + 
-  geom_histogram(bins = 20,  fill = "white", color = "black") + 
-  theme_minimal() + 
-  labs(title = "Age Distribution of NHANES Participants")
-```
-
-
-# Visualizations
-
-```{r, warning = FALSE}
-heart_coefs <- tidy(heart_model, conf.int = TRUE) %>% 
-  filter(term != "(Intercept)")
-
-stroke_coefs <- tidy(stroke_model, conf.int = TRUE) %>% 
-  filter(term != "(Intercept)")
-```
-
 
 ```{r}
-ggplot(heart_coefs,
-       aes(x = estimate, 
-           y = fct_rev(term))) +
-  geom_pointrange(aes(xmin = conf.low,
-                      xmax = conf.high)) + 
-  geom_vline(xintercept = 0,
-             color = "purple") +
-  theme_minimal() + 
-  ylab("") +
-  ggtitle("Heart Attack Coefficients")
+  library(knitr)
+  library(kableExtra)
+  x1 <- rnorm(100,0,1)
+  x2 <- rpois(100,5)
+  y1 <- rbinom(100,1,0.33)
+  df <- data.frame(x1,x2,y1)
+  modelx <- glm(y1 ~ x1 + x2, data = df ,family = "binomial")
+  tableit <- data.frame(summary(modelx)$coef)
+  tableit$OR <- exp(tableit$Estimate)
+  tableit$LCL <- exp(tableit$Estimate - tableit$Std..Error * 1.96 )
+  tableit$UCL <- exp(tableit$Estimate + tableit$Std..Error * 1.96 )
+  tableit$`p-value` <- tableit$Pr...z..
+  tableit <- tableit[c(5,6,7,8)]
+  kable(tableit, digits = 2, align = rep('c',4 )) %>%
+    kable_paper()
 ```
 
-```{r}
-ggplot(stroke_coefs,
-       aes(x = estimate, 
-           y = fct_rev(term))) +
-  geom_pointrange(aes(xmin = conf.low,
-                      xmax = conf.high)) + 
-  geom_vline(xintercept = 0,
-             color = "purple") +
-  theme_minimal() + 
-  ylab("") +
-  ggtitle("Stroke Coefficients")
-```
