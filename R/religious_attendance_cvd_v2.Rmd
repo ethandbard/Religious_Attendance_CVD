@@ -329,15 +329,12 @@ data <- data %>%
           religious_attendance = case_when(
           religious_attendance < 50 ~ "Less than Weekly",
           religious_attendance %in% c(50,51,52) ~ "Weekly",
-          religious_attendance > 52 & religious_attendance < 7777 ~ "More than   Weekly",
+          religious_attendance > 52 & religious_attendance < 7777 ~ "More than Weekly",
           religious_attendance >= 7777 ~ "NA",
           TRUE ~ as.character(religious_attendance)
         ))
 
 data$religious_attendance <- factor(data$religious_attendance, levels = c("Less than Weekly", "Weekly", "More than Weekly"), labels = c("Less than Weekly", "Weekly", "More than Weekly"))
-
-
-
 
 #BMX
 xpt <- foreign::read.xport("../Data/BMX_E.xpt")
@@ -399,8 +396,10 @@ data <- data %>%
 
 
 data <- data %>% 
-  mutate(age = case_when(
-    age %in% seq(20,45) ~ "young adult",
+  mutate(age_num = age,
+    age = case_when(
+    age %in% seq(20,39) ~ "young adult-1",
+    age %in% seq(40,45) ~ "young adult-2",
     age %in% seq(46,64) ~ "middle age",
     age >= 65 ~ "older adult"
   )) %>% 
@@ -409,7 +408,7 @@ data <- data %>%
 #Smaller dataset with no missing values
 
 #model 1
-data_small1 <- data %>% 
+data_small1 <-   data %>% 
   dplyr::select(gender, 
          age, 
          rfm, 
@@ -421,12 +420,6 @@ data_small1 <- data %>%
          num_healthcare_visits, 
          worried_house_run_out_food, 
          food_ran_out, 
-         tobacco_use_5_days,
-         alcohol_consumption, 
-         fasting_glucose, 
-         mobility_limit, 
-         high_blood_pressure, 
-         religious_attendance, 
          cvd) %>% 
   na.omit()
 
@@ -452,7 +445,7 @@ data_small2 <-   data %>%
   na.omit()
 
 #model 3
-data_small3 <-   data %>% 
+data_small3 <- data %>% 
   dplyr::select(gender, 
          age, 
          rfm, 
@@ -464,6 +457,12 @@ data_small3 <-   data %>%
          num_healthcare_visits, 
          worried_house_run_out_food, 
          food_ran_out, 
+         tobacco_use_5_days,
+         alcohol_consumption, 
+         fasting_glucose, 
+         mobility_limit, 
+         high_blood_pressure, 
+         religious_attendance, 
          cvd) %>% 
   na.omit()
 
@@ -474,36 +473,40 @@ data_small3 <-   data %>%
 #write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
 ```
 
+```{r}
+library(vtable)
+data %>% 
+  dplyr::select(gender, 
+         age, 
+         rfm, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         poverty_level_category, 
+         health_insurance, 
+         num_healthcare_visits, 
+         worried_house_run_out_food, 
+         food_ran_out, 
+         tobacco_use_5_days,
+         alcohol_consumption, 
+         fasting_glucose, 
+         mobility_limit, 
+         high_blood_pressure, 
+         religious_attendance, 
+         cvd) %>% 
+  sumtable(out = "csv", file = "variables.csv")
+```
+
+
 ```{r, eval = FALSE}
-frequency_table <- as.data.frame(table(data$gender, data$ethnicity, data$education, data$marital_status,
+frequency_table <- as.data.frame(table(data$age, data$gender, data$ethnicity, data$education, data$marital_status,
                                        data$poverty_level_category,
                                        data$health_insurance, data$num_healthcare_visits, data$ever_received_food_stamps,
                                        data$worried_house_run_out_food, data$food_ran_out, data$mobility_limit,
                                        data$high_blood_pressure,data$fasting_glucose, data$tobacco_use_5_days,
                                        data$alcohol_consumption, data$religious_attendance,
                                        data$heart_attack, data$stroke)) %>% 
-                    arrange(-Freq) %>% 
-                    rename(Gender = Var1,
-                           Ethnicity = Var2,
-                           Education = Var3, 
-                           Marital_status = Var4,
-                           Poverty_level_category = Var5,
-                           Health_insurance = Var6,
-                           Number_healthcare_visits = Var7,
-                           Received_food_stamps = Var8,
-                           Worried_house_run_out_of_food = Var9,
-                           Food_ran_out = Var10,
-                           Mobility_limit = Var11,
-                           High_blood_pressure = Var12,
-                           Fasting_glucose = Var13,
-                           Tobacco_use_5_days = Var14,
-                           Alcohol_consumption = Var15,
-                           Religious_attendance = Var16,
-                           Heart_attack = Var17,
-                           Stroke = Var18)
-
-frequency_table <-  frequency_table %>% 
-  filter(Freq >= 1)
+                  filter(Freq >= 1)
 
 frequency_table
 
@@ -591,18 +594,17 @@ p2
 ## Cardiovascular Disease: Social, Health, and Religious Attendance Summaries  
 
 ```{r}
-
-#all variables
-model1 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
-                  alcohol_consumption +
-                  fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
-                data = data_small1, family = "binomial")
+#Social determinants only
+model1 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,data = data_small1, family = "binomial")
 
 #Social + health
 model2 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + alcohol_consumption +fasting_glucose + mobility_limit + high_blood_pressure, data = data_small2, family = "binomial")
 
-#Social determinants only
-model3 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,data = data_small3, family = "binomial")
+#all variables
+model3 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
+                  alcohol_consumption +
+                  fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
+                data = data_small3, family = "binomial")
 ```
 
 ```{r}
@@ -611,14 +613,6 @@ summary(model1)
 summary(model2)
 
 summary(model3)
-```
-
-## Step-Wise  
-
-```{r, eval=FALSE}
-summary(step(model1, trace = 0, direction = 'both'))
-summary(step(model2, trace = 0, direction = 'both'))
-summary(step(model3, trace = 0, direction = 'both'))
 ```
 
 ## Chi Sq model significance   
@@ -636,39 +630,29 @@ data.frame(
 #  kable_paper() 
 ```
 
-```{r, eval = FALSE}
-library(glmnet)
-
-x <- as.matrix(data_small1)
-
-model1_lasso <- glmnet(x, y = as.factor(cvd), alpha = 1, family = "binomial")
-```
-
 ## model classification confusion matrix  
 
 ```{r}
 #make train and test sets
 set.seed(304)
 training.samples <- data_small1$cvd %>% 
-  createDataPartition(p = 0.80, list = FALSE)
+  createDataPartition(p = 0.70, list = FALSE)
 train.data1 <- data_small1[training.samples, ]
 test.data1 <- data_small1[-training.samples, ]
 
 training.samples <- data_small2$cvd %>% 
-  createDataPartition(p = 0.80, list = FALSE)
+  createDataPartition(p = 0.70, list = FALSE)
 train.data2 <- data_small2[training.samples, ]
 test.data2 <- data_small2[-training.samples, ]
 
 training.samples <- data_small3$cvd %>% 
-  createDataPartition(p = 0.80, list = FALSE)
+  createDataPartition(p = 0.70, list = FALSE)
 train.data3 <- data_small3[training.samples, ]
 test.data3 <- data_small3[-training.samples, ]
 ```
 
 ```{r}
-model1_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
-                  alcohol_consumption +
-                  fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
+model1_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
                 data = train.data1, family = "binomial")
 
 probabilities1 <- model1_train %>% predict(test.data1, type = "response")
@@ -709,7 +693,7 @@ roc(cvd ~ prob, data = test.data1)
 conf.matrix <- table(predicted.classes1, test.data1$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
-confusionMatrix(conf.matrix)
+confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 ```{r}
@@ -752,12 +736,15 @@ roc(cvd ~ prob, data = test.data2)
 conf.matrix <- table(predicted.classes2, test.data2$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
-confusionMatrix(conf.matrix)
+confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 ```{r}
-model3_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
+model3_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
+                  alcohol_consumption +
+                  fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
                 data = train.data3, family = "binomial")
+
 
 probabilities3 <- model3_train %>% predict(test.data3, type = "response")
 predicted.classes3 <- ifelse(probabilities3 > 0.5, "pos", "neg")
@@ -789,8 +776,8 @@ plot(roc(cvd ~ prob, data = test.data3), main = "Model 3")
 
 conf.matrix <- table(predicted.classes3, test.data3$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
-#can run this if threshold is changed. need two prediction classes to calculate specificity and sensitivity
-confusionMatrix(conf.matrix)
+
+confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 
@@ -807,7 +794,7 @@ blr_multi_model_fit_stats(model1, model2, model3)
 ## Odds ratios and p-value  
 
 ```{r}
-model1_tbl <- tbl_regression(model1, exponentiate = TRUE) %>% 
+model1_tbl <- tbl_regression(model1, exponentiate = FALSE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -817,7 +804,7 @@ model1_tbl <- tbl_regression(model1, exponentiate = TRUE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)  
 
-model2_tbl <- tbl_regression(model2, exponentiate = TRUE) %>% 
+model2_tbl <- tbl_regression(model2, exponentiate = FALSE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -827,7 +814,7 @@ model2_tbl <- tbl_regression(model2, exponentiate = TRUE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-model3_tbl <- tbl_regression(model3, exponentiate = TRUE) %>% 
+model3_tbl <- tbl_regression(model3, exponentiate = FALSE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -840,3 +827,5 @@ model3_tbl <- tbl_regression(model3, exponentiate = TRUE) %>%
 tbl_merge(tbls = list(model1_tbl, model2_tbl, model3_tbl),
           tab_spanner = c("Model 1", "Model 2", "Model 3"))
 ```
+
+
