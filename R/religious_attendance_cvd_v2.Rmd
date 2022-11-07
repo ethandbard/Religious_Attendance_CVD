@@ -1,0 +1,842 @@
+---
+title: "Religious Attendance and CVD"
+output: html_notebook 
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+library(gtsummary)
+library(foreign)
+library(knitr)
+library(blorr)
+library(vtable)
+library(leaps)
+library(gridExtra)
+library(MASS)
+library(caret)
+library(poliscidata)
+library(MuMIn)
+library(flexmix)
+library(pROC)
+library(modelsummary)
+library(plotly)
+```
+
+```{r import data and map variables}
+#demo
+xpt <- foreign::read.xport("../Data/DEMO_E.XPT")
+
+data <- xpt[c("SEQN", "RIAGENDR", "RIDAGEYR", "RIDRETH1", "DMDEDUC2", "DMDMARTL", "DMDBORN2")] %>% 
+  rename(gender = RIAGENDR,
+         age = RIDAGEYR,
+         ethnicity = RIDRETH1,
+         education = DMDEDUC2,
+         marital_status = DMDMARTL,
+         born_outside_us = DMDBORN2)
+
+#INQ
+xpt <- foreign::read.xport("../Data/INQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "INDFMMPI", "INDFMMPC")], by = "SEQN", all.x = TRUE) %>% 
+  rename(poverty_level_index = INDFMMPI,
+         poverty_level_category = INDFMMPC)
+
+#HIQ
+xpt <- foreign::read.xport("../Data/HIQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "HIQ011", "HIQ031A", "HIQ031B", "HIQ031D")], by = "SEQN", all.x = TRUE) %>% 
+  rename(health_insurance = HIQ011,
+         private_insurance = HIQ031A,
+         medicare = HIQ031B,
+         medicaid = HIQ031D)
+
+#HUQ
+xpt <- foreign::read.xport("../Data/HUQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "HUQ050")], by = "SEQN", all.x = TRUE) %>% 
+  rename(num_healthcare_visits = HUQ050)
+
+#FSQ
+xpt <- foreign::read.xport("../Data/FSQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "FSQ165", "FSQ171", "FSD670ZC", "FSD032A", "FSD032B")], by = "SEQN", all.x = TRUE) %>% 
+  rename(ever_received_food_stamps = FSQ165,
+         #food_stamps_past_yr = FSQ171,
+         num_months_WIC = FSD670ZC,
+         worried_house_run_out_food = FSD032A,
+         food_ran_out = FSD032B)
+
+#PFQ
+xpt <- foreign::read.xport("../Data/PFQ_E.xpt")
+
+#risk_mobility
+data <- merge(data, xpt[c("SEQN", "PFQ049")], by = "SEQN", all.x = TRUE) %>% 
+  dplyr::rename(mobility_limit = PFQ049) %>% 
+  dplyr::mutate(risk_mobility = case_when(
+                mobility_limit == "Yes" ~ 1,
+                TRUE ~ as.double(0)))
+
+#BPQ
+xpt <- foreign::read.xport("../Data/BPQ_E.xpt")
+
+#risk_bp
+data <- merge(data,xpt[c("SEQN", "BPQ020")], by = "SEQN", all.x = TRUE) %>% 
+  rename(high_blood_pressure = BPQ020) %>% 
+  mutate(risk_bp = case_when(
+    high_blood_pressure == "Yes" ~ 1,
+    TRUE ~ as.double(0)
+  ))
+
+
+#GLU
+xpt <- foreign::read.xport("../Data/GLU_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "LBDGLUSI")], by = "SEQN", all.x = TRUE) %>%
+  rename(fasting_glucose = LBDGLUSI)
+
+#fasting glucose
+data <- data %>% 
+  mutate(fasting_glucose = case_when(
+    fasting_glucose <= 4.995 ~ "Not at Risk",
+    fasting_glucose > 4.995 ~ "At Risk",
+    is.na(fasting_glucose) ~ "Unknown"
+  ))
+
+#risk_glucose
+data$fasting_glucose <- factor(data$fasting_glucose, levels = c("Not at Risk", "At Risk"), c("Not at Risk", "At Risk"))
+data <- data %>% 
+  mutate(risk_glucose = case_when(
+    fasting_glucose == "At Risk" ~ 1,
+    TRUE ~ as.double(0)
+  ))
+
+
+#SMQRTU
+xpt <- foreign::read.xport("../Data/SMQRTU_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "SMQ680")], by = "SEQN", all.x = TRUE) %>% 
+  rename(tobacco_use_5_days = SMQ680)
+
+#ALQ
+xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ140Q", "ALQ140U", "ALQ110")], by = "SEQN", all.x = TRUE) %>% 
+  mutate(had_12_drinks_in_1yr = ALQ101,
+         avg_drinks_daily_past_yr = ALQ130,
+         num_drinks_past_yr = ALQ120Q,
+         num_drinks_past_yr_unit = ALQ120U,
+         num_days_5_drinks_or_more = ALQ140Q,
+         had_12_drinks_lifetime = ALQ110)
+
+data <- data %>% 
+  mutate(alcohol_consumption = case_when(
+    (ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365) ~ "Current Drinker",
+    ALQ110 == 1  & ALQ120Q == 0 ~ "Past drinker",
+    ALQ101 == 2 & ALQ110 == 2  ~ "Never",
+    is.na(ALQ101) ~ "Not Asked",
+    is.na(ALQ101) & is.na(ALQ101) ~ "Not Asked",
+    is.na(ALQ120Q) ~ "Not Asked",
+    is.na(ALQ130) ~ "Not Asked",
+    ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "Don't Know",
+    TRUE ~ as.character("Don't Know")
+  )) %>% 
+  mutate(alcohol_consumption = factor(alcohol_consumption))
+
+data %>% 
+  group_by(alcohol_consumption) %>% 
+  summarise(N = n())
+
+# data <- data %>% 
+#   mutate(num_drinks_weekly = case_when(
+#     num_drinks_past_yr_unit == 1 ~ num_drinks_past_yr,
+#     num_drinks_past_yr_unit == 2 ~ num_drinks_past_yr/4.25,
+#     num_drinks_past_yr_unit == 3 ~ num_drinks_past_yr/52,
+#  #   num_drinks_past_yr == 777 ~ NA,
+#  #   num_drinks_past_yr == 999 ~ NA,
+#     TRUE ~ as.double(num_drinks_past_yr)
+#   ))
+# 
+# data <- data %>% 
+#   mutate(num_days_5_drinks_or_more = case_when(
+#     #convert to days per week
+#     ALQ140U == 1 ~ num_days_5_drinks_or_more,
+#     ALQ140U == 2 ~ num_days_5_drinks_or_more/4.25,
+#     ALQ140U == 3 ~ num_days_5_drinks_or_more/52,
+#     TRUE ~ as.double(num_days_5_drinks_or_more)
+#   ))
+
+#data <- data %>% 
+#  mutate(type_of_drinker = case_when(
+#    had_12_drinks_lifetime == 2 ~ "Abstainer",
+#    num_days_5_drinks_or_more >= 1 ~ "Harmful",
+#    age >= 65 & num_drinks_weekly > 7 ~ "Harmful",
+#    had_12_drinks_in_1yr == 1 & (age < 65 | num_days_5_drinks_or_more < 1) & gender == 2 & num_drinks_weekly #<= 7 ~ "Moderate",
+#    had_12_drinks_in_1yr == 1 & (age < 65 | num_days_5_drinks_or_more < 1) & gender == 2 & num_drinks_weekly #> 7 ~ "Harmful",
+#    had_12_drinks_in_1yr == 1 & (age < 65 | num_days_5_drinks_or_more < 1) & gender == 1 & num_drinks_weekly #> 14 ~ "Harmful",
+#    had_12_drinks_in_1yr == 1 & (age < 65 | num_days_5_drinks_or_more < 1) & gender == 1 & num_drinks_weekly #<= 14 ~ "Moderate",
+#    TRUE ~ as.character("NA")
+#  )) %>% 
+#  mutate(risk_alcohol = case_when(
+#    type_of_drinker == "Harmful" ~ 1,
+#    TRUE ~ as.double(0)
+#  ))
+
+
+
+
+
+
+#SSQ
+xpt <- foreign::read.xport("../Data/SSQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "SSD044")], by = "SEQN", all.x = TRUE) %>% 
+  rename(religious_attendance = SSD044)
+
+#MCQ
+xpt <- foreign::read.xport("../Data/MCQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "MCQ160E", "MCQ160F")], by = "SEQN", all.x = TRUE) %>% 
+  rename(heart_attack = MCQ160E,
+         stroke = MCQ160F)
+
+#DR1FF
+#xpt <- foreign::read.xport("../Data/DR1IFF_E.xpt") %>% 
+#  dplyr::select(SEQN, DR1IKCAL) %>% 
+#  group_by(SEQN) %>% 
+#  summarise(SEQN = SEQN,
+#            calories = mean(DR1IKCAL * 1000, na.rm = T)) %>% 
+#  distinct()
+
+#data <- merge(data, xpt, by = "SEQN", all.x = TRUE)
+
+
+data$gender <- factor(data$gender,levels = c(1,2), labels = c("Male", "Female"))
+
+data <- data %>% 
+  mutate(ethnicity = case_when(
+    ethnicity %in% c(1,2) ~ 1,
+    TRUE ~ as.double(ethnicity)
+  ))
+
+data$ethnicity <- factor(data$ethnicity, levels = c(3,1,4,5), labels = c( "Non-Hispanic White", "Hispanic", "Non-Hispanic Black", "Other"))
+
+data$education <- factor(data$education, levels = c(1,2,3,4,5), labels = c("Less than 9th grade", "9-11th Grade", "High School/GED", "Some college", "College Graduate or above"))
+
+data <- data %>% 
+  mutate(education = case_when(
+    education %in% c("Less than 9th grade", "9-11th Grade") ~ "Less than High School",
+    TRUE ~ as.character(education)
+  ))
+
+data$education <- factor(data$education, levels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above"), labels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above"))
+
+data$marital_status <- factor(data$marital_status, levels = c(1,2,3,4,5,6), labels = c("Married", "Widowed", "Divorced", "Separated", "Never Married", "Living with partner"))
+
+data <- data %>% 
+  mutate(marital_status = case_when(
+    marital_status %in% c("Married", "Living with partner") ~ "Married",
+    marital_status %in% c("Divorced", "Widowed", "Separated") ~ "Previously Married",
+    TRUE ~ as.character(marital_status)
+  ))
+
+data$marital_status <- factor(data$marital_status, levels = c("Never Married", "Married", "Previously Married", "Refused", "Don't Know"),
+                              labels = c("Never Married", "Married", "Previously Married", "Refused", "Don't Know"))
+
+
+data$born_outside_us <- factor(data$born_outside_us, levels = c(1,2,4,5), labels = c("Born in US", "Born in Mexico", "Born in other spanish speaking country", "Born in other non-spanish speaking country"))
+
+data <- data %>% 
+  mutate(born_outside_us = case_when(
+    born_outside_us %in% c("Born in Mexico", "Born in other spanish speaking country", "Born in other non-spanish speaking country") ~ " Born outside US",
+    TRUE ~ as.character(born_outside_us)
+  ))
+
+data$born_outside_us <- factor(data$born_outside_us, levels = c("Born in US", "Born outside US"), labels = c("Born in US", "Born outside US"))
+
+
+data$poverty_level_category <- factor(data$poverty_level_category, c(1,2,3), c("Poverty Index <= 1.3", "Poverty Index in (1.30, 1.85)", "Poverty Index > 1.85"))
+
+data <- data %>% 
+  mutate(health_insurance = case_when(
+    is.na(health_insurance) ~ "Unknown",
+    TRUE ~ as.character(health_insurance)
+  ))
+
+data <- data %>% 
+  mutate(private_insurance = case_when(
+    is.na(private_insurance) ~ "Unknown",
+    TRUE ~ as.character(private_insurance)
+  ))
+
+data <- data %>% 
+  mutate(medicare = case_when(
+    is.na(medicare) ~ "Unknown",
+    TRUE ~ as.character(medicare)
+  ))
+
+data <- data %>% 
+  mutate(medicaid = case_when(
+    is.na(medicaid) ~ "Unknown",
+    TRUE ~ as.character(medicaid)
+  ))
+
+data$health_insurance <- factor(data$health_insurance, c("2","1"), c("Not Covered", "Covered"))
+data$private_insurance <- factor(data$private_insurance, c("Unknown", "14"), c("Not Covered", "Covered"))
+data$medicare <- factor(data$medicare, c( "Unknown","15"), c("Not Covered", "Covered"))
+data$medicaid <- factor(data$medicaid, c( "Unknown", "17"), c("Not Covered", "Covered"))
+
+data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5), c("None", "1", "2 to 3", "4 to 9", "10 to 12", "13 or more"))
+data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2), c("Yes", "No"))
+#data$food_stamps_past_yr <- factor(data$food_stamps_past_yr, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
+#data$num_months_WIC targeted 0-11 years
+data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
+data$food_ran_out <- factor(data$food_ran_out, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
+data$mobility_limit <- factor(data$mobility_limit, c(1,2), c("Yes", "No"))
+data$high_blood_pressure <- factor(data$high_blood_pressure, c(1,2), c("Yes", "No"))
+
+
+#risk_tobacco
+data <- data %>% 
+  mutate(tobacco_use_5_days = case_when(
+    tobacco_use_5_days == 1 ~ "Yes",
+    tobacco_use_5_days == 2 ~ "No",
+    tobacco_use_5_days %in% c(7,9) ~ "Unknown",
+    is.na(tobacco_use_5_days) ~ "Unknown"
+  )) %>% 
+  mutate(risk_tobacaco = case_when(
+    tobacco_use_5_days == "Yes" ~ 1,
+    TRUE ~ as.double(0)
+  ))
+data$tobacco_use_5_days <- factor(data$tobacco_use_5_days, c("Yes", "No"), c("Yes", "No"))
+
+
+data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
+
+data$heart_attack_num <- data$heart_attack
+data$stroke_num <- data$stroke
+
+data$heart_attack <- factor(data$heart_attack, c(1,2), c("Yes", "No"))
+data$stroke <- factor(data$stroke, c(1,2), c("Yes", "No"))
+
+#Religious Attendance
+data <- data %>% 
+  mutate(religious_attendance_num = religious_attendance,
+          religious_attendance = case_when(
+          religious_attendance < 50 ~ "Less than Weekly",
+          religious_attendance %in% c(50,51,52) ~ "Weekly",
+          religious_attendance > 52 & religious_attendance < 7777 ~ "More than   Weekly",
+          religious_attendance >= 7777 ~ "NA",
+          TRUE ~ as.character(religious_attendance)
+        ))
+
+data$religious_attendance <- factor(data$religious_attendance, levels = c("Less than Weekly", "Weekly", "More than Weekly"), labels = c("Less than Weekly", "Weekly", "More than Weekly"))
+
+
+
+
+#BMX
+xpt <- foreign::read.xport("../Data/BMX_E.xpt")
+data <- merge(data, xpt[c("SEQN", "BMXWT", "BMXHT", "BMXWAIST")], by = "SEQN", all.x = TRUE) %>% 
+  rename(height = BMXHT,
+         weight = BMXWT,
+         waist = BMXWAIST)
+
+data <- data %>% 
+  mutate(rfm = case_when(
+    gender == "Male" ~ as.double(64 - (20 * (height / waist))),
+    gender == "Female" ~ as.double(76 - (20 * (height / waist)))
+  ))
+
+data <- data %>% 
+  mutate(risk_rfm = case_when(
+    gender == "Male" & rfm >= 30 ~ 1,
+    gender == "Female" & rfm >= 40 ~ 1,
+    TRUE ~ as.numeric(0)
+  ))
+
+#data <- data %>% 
+#  group_by(SEQN) %>% 
+#  mutate(risk_sum = sum(risk_glucose, risk_mobility, risk_bp, risk_tobacaco, risk_alcohol, risk_rfm))
+
+
+#data$risk_sum <- factor(data$risk_sum)
+
+data <- data %>% 
+  mutate(weekly_drinking = case_when(
+          num_drinks_past_yr_unit == 1 ~ num_drinks_past_yr,
+          num_drinks_past_yr_unit == 2 ~ num_drinks_past_yr / 4.25,
+          num_drinks_past_yr_unit == 3 ~ num_drinks_past_yr / 52,
+          num_drinks_past_yr == 0 ~ 0),
+         type_of_drinker = case_when(
+          age >= 65 & weekly_drinking > 7 ~ "Harmful",
+          age >= 65 & weekly_drinking <=7 & weekly_drinking > 0 ~ "Moderate",
+          age < 65 & gender == "Female" & weekly_drinking > 0.0 & weekly_drinking <= 7.0 ~ "Moderate",
+          age < 65 & gender == "Female" & weekly_drinking > 0.0 & weekly_drinking > 7.0 ~ "Harmful",
+          age < 65 & gender == "Male" & weekly_drinking > 0.0 & weekly_drinking <= 14.0 ~ "Moderate",
+          age < 65 & gender == "Male" & weekly_drinking > 0.0 & weekly_drinking > 14.0 ~ "Harmful",
+          weekly_drinking == 0.000000000 ~ "Abstainer"
+         )
+    )
+
+
+
+data$type_of_drinker <- factor(data$type_of_drinker, c("Abstainer", "Harmful", "Moderate"), c("Abstainer", "Harmful", "Moderate"))
+
+
+data <- data %>% 
+  filter(age >= 20)
+
+data <- data %>% 
+  mutate(cvd = case_when(
+    heart_attack == "Yes" | stroke == "Yes" ~ 1,
+    TRUE ~ as.numeric(0)
+  ))
+
+
+data <- data %>% 
+  mutate(age = case_when(
+    age %in% seq(20,45) ~ "young adult",
+    age %in% seq(46,64) ~ "middle age",
+    age >= 65 ~ "older adult"
+  )) %>% 
+  mutate(age = factor(age))
+
+#Smaller dataset with no missing values
+
+#model 1
+data_small1 <- data %>% 
+  dplyr::select(gender, 
+         age, 
+         rfm, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         poverty_level_category, 
+         health_insurance, 
+         num_healthcare_visits, 
+         worried_house_run_out_food, 
+         food_ran_out, 
+         tobacco_use_5_days,
+         alcohol_consumption, 
+         fasting_glucose, 
+         mobility_limit, 
+         high_blood_pressure, 
+         religious_attendance, 
+         cvd) %>% 
+  na.omit()
+
+#model 2
+data_small2 <-   data %>% 
+  dplyr::select(gender, 
+         age, 
+         rfm, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         poverty_level_category, 
+         health_insurance, 
+         num_healthcare_visits, 
+         worried_house_run_out_food, 
+         food_ran_out, 
+         tobacco_use_5_days,
+         alcohol_consumption, 
+         fasting_glucose, 
+         mobility_limit, 
+         high_blood_pressure, 
+         cvd) %>% 
+  na.omit()
+
+#model 3
+data_small3 <-   data %>% 
+  dplyr::select(gender, 
+         age, 
+         rfm, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         poverty_level_category, 
+         health_insurance, 
+         num_healthcare_visits, 
+         worried_house_run_out_food, 
+         food_ran_out, 
+         cvd) %>% 
+  na.omit()
+
+#Create .SAS file
+#write.foreign(df=data, datafile="../Data/nhanes0708.csv", codefile="../Data/nhanes0708.sas", package="SAS")
+
+#Create .csv file
+#write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
+```
+
+```{r, eval = FALSE}
+frequency_table <- as.data.frame(table(data$gender, data$ethnicity, data$education, data$marital_status,
+                                       data$poverty_level_category,
+                                       data$health_insurance, data$num_healthcare_visits, data$ever_received_food_stamps,
+                                       data$worried_house_run_out_food, data$food_ran_out, data$mobility_limit,
+                                       data$high_blood_pressure,data$fasting_glucose, data$tobacco_use_5_days,
+                                       data$alcohol_consumption, data$religious_attendance,
+                                       data$heart_attack, data$stroke)) %>% 
+                    arrange(-Freq) %>% 
+                    rename(Gender = Var1,
+                           Ethnicity = Var2,
+                           Education = Var3, 
+                           Marital_status = Var4,
+                           Poverty_level_category = Var5,
+                           Health_insurance = Var6,
+                           Number_healthcare_visits = Var7,
+                           Received_food_stamps = Var8,
+                           Worried_house_run_out_of_food = Var9,
+                           Food_ran_out = Var10,
+                           Mobility_limit = Var11,
+                           High_blood_pressure = Var12,
+                           Fasting_glucose = Var13,
+                           Tobacco_use_5_days = Var14,
+                           Alcohol_consumption = Var15,
+                           Religious_attendance = Var16,
+                           Heart_attack = Var17,
+                           Stroke = Var18)
+
+frequency_table <-  frequency_table %>% 
+  filter(Freq >= 1)
+
+frequency_table
+
+write.csv(frequency_table, "../Data/frequency_table.csv", col.names = TRUE) 
+ 
+# write.foreign(df=frequency_table, datafile="../Data/frequency_table.csv", 
+#              codefile="../Data/frequency_table.sas", package="SAS")
+```
+
+```{r, eval = FALSE}
+data %>% 
+ # select(num_healthcare_visits, gender, age, ethnicity, education, marital_status, poverty_level_category, health_insurance, Received_food_stamps, Worried_house_run_out_of_food, Food_ran_out ) %>% 
+  group_by(num_healthcare_visits) %>% 
+  summarise(N = n(),
+            White = scales::percent(length(ethnicity[ethnicity == "Non-Hispanic White"]) / n()),
+            Black = scales::percent(length(ethnicity[ethnicity == "Non-Hispanic Black"]) / n()),
+            Hispanic = scales::percent(length(ethnicity[ethnicity == "Hispanic"]) / n()),
+            Other = scales::percent(length(ethnicity[ethnicity == "Other"]) / n()),
+            Uneducated = scales::percent(length(education[education == "Less than High School"]) / n()),
+            Never_married = scales::percent(length(marital_status[marital_status == "Never Married"]) / n()),
+            Married = scales::percent(length(marital_status[marital_status == "Married"]) / n()),
+            Health_insurance = scales::percent(length(health_insurance[health_insurance == "Covered"]) / n()),
+            Receieved_food_stamps = scales::percent(length(ever_received_food_stamps[ever_received_food_stamps == "Yes"]) / n()),
+            Worried_food_ran_out = scales::percent(length(worried_house_run_out_food[worried_house_run_out_food == "Yes"]) / n()),
+            Food_ran_out = scales::percent(length(food_ran_out[food_ran_out == "Yes"]) / n())
+            ) %>% 
+  kable() %>% 
+  kable_paper()
+```
+
+# Heart attack and Stroke Prevalence  
+
+```{r heart attack and stroke table}
+as.data.frame(table(data$heart_attack, data$stroke)) %>% 
+  rename('Heart Attack' = Var1,
+         'Stroke' = Var2) %>% 
+  #mutate(Percent = Freq / nrow(data) * 100) %>% 
+#  arrange(-Percent) %>% 
+  pivot_wider(names_from = Stroke, values_from = Freq) %>% 
+  kable(caption = 'Heart Attack and Stroke Crosstab',
+        align = c('l')) %>% 
+  kable_paper() %>% 
+  add_header_above(c(" " = 1, "Stroke" = 2))
+```
+
+# Number of healthcare visits per year by cardiovascular disease history  
+
+```{r, warning=FALSE}
+p1 <- as.data.frame(table(data$cvd, data$num_healthcare_visits)) %>% 
+  mutate(Var1 = case_when(
+    Var1 == 0 ~ "No",
+    Var1 == 1 ~ "Yes"
+  )) %>% 
+  rename("Ever been told to have had a stroke/ heart attack" = Var1,
+         "Number of healthcare visits per year" = Var2,
+         "N" = Freq) %>% 
+  ggplot(aes(x = `Number of healthcare visits per year`, y = N, fill = `Ever been told to have had a stroke/ heart attack`)) +
+  geom_bar(stat = 'identity', position = 'stack') + 
+  theme_minimal() +
+  geom_text(aes(label = N), vjust = -0.2, hjust = 0.5, size = 4, position = 'stack')+
+  theme(legend.position = 'top') +
+  labs(y = "", title = "Number of Healthcare Visits Per Year by Cardiovascular Disease History", caption = 'N = 5933') + 
+  scale_fill_grey(start = 0.6, end = 0.3)
+
+p2 <- as.data.frame(table(data$cvd, data$num_healthcare_visits)) %>% 
+  mutate(Var1 = case_when(
+    Var1 == 0 ~ "No",
+    Var1 == 1 ~ "Yes"
+  )) %>% 
+  rename("Ever been told to have had a stroke/ heart attack" = Var1,
+         "Number of healthcare visits per year" = Var2,
+         "N" = Freq) %>% 
+  pivot_wider(names_from = `Number of healthcare visits per year`, values_from = `N`) %>% 
+  kable(caption = 'Number of Healthcare Visits Per Year by Cardiovascular Disease History',
+        align = c("l")) %>% 
+  kable_paper() %>% 
+  add_header_above(c(" " = 1, "Number of Healthcare Visits Per Year" = 6))
+
+p1 
+p2
+```
+
+# Model Selection
+
+## Cardiovascular Disease: Social, Health, and Religious Attendance Summaries  
+
+```{r}
+
+#all variables
+model1 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
+                  alcohol_consumption +
+                  fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
+                data = data_small1, family = "binomial")
+
+#Social + health
+model2 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + alcohol_consumption +fasting_glucose + mobility_limit + high_blood_pressure, data = data_small2, family = "binomial")
+
+#Social determinants only
+model3 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,data = data_small3, family = "binomial")
+```
+
+```{r}
+summary(model1)
+
+summary(model2)
+
+summary(model3)
+```
+
+## Step-Wise  
+
+```{r, eval=FALSE}
+summary(step(model1, trace = 0, direction = 'both'))
+summary(step(model2, trace = 0, direction = 'both'))
+summary(step(model3, trace = 0, direction = 'both'))
+```
+
+## Chi Sq model significance   
+
+```{r}
+data.frame(
+  Models = c("Model 1", "Model 2", "Model 3"),
+  ChiSq_significance = c(with(model1, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model2, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model3, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))),
+  BIC = c(BIC(model1),
+          BIC(model2),
+          BIC(model3)))# %>% 
+#  kable(caption = "Model significance - Chi Sq") %>% 
+#  kable_paper() 
+```
+
+```{r, eval = FALSE}
+library(glmnet)
+
+x <- as.matrix(data_small1)
+
+model1_lasso <- glmnet(x, y = as.factor(cvd), alpha = 1, family = "binomial")
+```
+
+## model classification confusion matrix  
+
+```{r}
+#make train and test sets
+set.seed(304)
+training.samples <- data_small1$cvd %>% 
+  createDataPartition(p = 0.80, list = FALSE)
+train.data1 <- data_small1[training.samples, ]
+test.data1 <- data_small1[-training.samples, ]
+
+training.samples <- data_small2$cvd %>% 
+  createDataPartition(p = 0.80, list = FALSE)
+train.data2 <- data_small2[training.samples, ]
+test.data2 <- data_small2[-training.samples, ]
+
+training.samples <- data_small3$cvd %>% 
+  createDataPartition(p = 0.80, list = FALSE)
+train.data3 <- data_small3[training.samples, ]
+test.data3 <- data_small3[-training.samples, ]
+```
+
+```{r}
+model1_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
+                  alcohol_consumption +
+                  fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
+                data = train.data1, family = "binomial")
+
+probabilities1 <- model1_train %>% predict(test.data1, type = "response")
+predicted.classes1 <- ifelse(probabilities1 > 0.5, "pos", "neg")
+
+as.data.frame(table(predicted.classes1, test.data1$cvd)) %>% 
+  rename("CVD" = Var2,
+         "Predicted Classes" = predicted.classes1) %>% 
+  mutate(CVD = case_when(
+          CVD == 0 ~ "neg",
+          CVD == 1 ~ "pos")) %>% 
+  pivot_wider(names_from = CVD, values_from = Freq) %>% 
+  kable(caption = 'Model 1 Predictions', align = c("l")) %>% 
+  kable_paper() %>% 
+  add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
+
+
+#probabilities box plot
+
+df <- data.frame(predictions = predicted.classes1,
+           probabilities = probabilities1,
+           observed = test.data1$cvd)
+
+meds <- c(by(df$probabilities, df$observed, median))
+
+df %>% 
+  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") + 
+  labs(title = "Model 1: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") + 
+  scale_fill_grey(start = 0.6, end = 0.4) 
+
+test.data1$prob = probabilities1
+plot(roc(cvd ~ prob, data = test.data1), main = "Model 1")
+roc(cvd ~ prob, data = test.data1)
+
+conf.matrix <- table(predicted.classes1, test.data1$cvd)
+dimnames(conf.matrix)[[2]] <- c("neg", "pos")
+
+confusionMatrix(conf.matrix)
+```
+
+```{r}
+model2_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
+                  alcohol_consumption +
+                  fasting_glucose + mobility_limit + high_blood_pressure, 
+                data = train.data2, family = "binomial")
+
+probabilities2 <- model2_train %>% predict(test.data2, type = "response")
+predicted.classes2 <- ifelse(probabilities2 > 0.5, "pos", "neg")
+
+as.data.frame(table(predicted.classes2, test.data2$cvd)) %>% 
+  rename("CVD" = Var2,
+         "Predicted Classes" = predicted.classes2) %>% 
+  mutate(CVD = case_when(
+          CVD == 0 ~ "neg",
+          CVD == 1 ~ "pos")) %>% 
+  pivot_wider(names_from = CVD, values_from = Freq) %>% 
+  kable(caption = 'Model 2 Predictions', align = c("l")) %>% 
+  kable_paper() %>% 
+  add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
+
+
+data.frame(predictions = predicted.classes2,
+           probabilities = probabilities2,
+           observed = test.data2$cvd) %>% 
+  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") + 
+  labs(title = "Model 2: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") +
+  scale_fill_grey(start = 0.6, end = 0.4)
+
+test.data2$prob = probabilities2
+
+plot(roc(cvd ~ prob, data = test.data2), main = "Model 2")
+
+roc(cvd ~ prob, data = test.data2)
+
+conf.matrix <- table(predicted.classes2, test.data2$cvd)
+dimnames(conf.matrix)[[2]] <- c("neg", "pos")
+
+confusionMatrix(conf.matrix)
+```
+
+```{r}
+model3_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
+                data = train.data3, family = "binomial")
+
+probabilities3 <- model3_train %>% predict(test.data3, type = "response")
+predicted.classes3 <- ifelse(probabilities3 > 0.5, "pos", "neg")
+
+as.data.frame(table(predicted.classes3, test.data3$cvd)) %>% 
+  rename("CVD" = Var2,
+         "Predicted Classes" = predicted.classes3) %>% 
+  mutate(CVD = case_when(
+          CVD == 0 ~ "neg",
+          CVD == 1 ~ "pos")) %>% 
+  pivot_wider(names_from = CVD, values_from = Freq) %>% 
+  kable(caption = 'Model 3 Predicted Classes', align = c("l")) %>% 
+  kable_paper() %>% 
+  add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
+
+data.frame(predictions = predicted.classes3,
+           probabilities = probabilities3,
+           observed = test.data3$cvd) %>% 
+  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none") + 
+  labs(title = "Model 3: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") +
+  scale_fill_grey(start = 0.6, end = 0.4)
+
+test.data3$prob = probabilities3
+plot(roc(cvd ~ prob, data = test.data3), main = "Model 3")
+
+
+conf.matrix <- table(predicted.classes3, test.data3$cvd)
+dimnames(conf.matrix)[[2]] <- c("neg", "pos")
+#can run this if threshold is changed. need two prediction classes to calculate specificity and sensitivity
+confusionMatrix(conf.matrix)
+```
+
+
+# Model Fit Statistics  
+
+```{r}
+blr_model_fit_stats(model1)
+blr_model_fit_stats(model2)
+blr_model_fit_stats(model3)
+
+blr_multi_model_fit_stats(model1, model2, model3)
+```
+
+## Odds ratios and p-value  
+
+```{r}
+model1_tbl <- tbl_regression(model1, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+model2_tbl <- tbl_regression(model2, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+model3_tbl <- tbl_regression(model3, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+tbl_merge(tbls = list(model1_tbl, model2_tbl, model3_tbl),
+          tab_spanner = c("Model 1", "Model 2", "Model 3"))
+```
