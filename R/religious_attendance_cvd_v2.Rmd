@@ -24,7 +24,7 @@ library(MuMIn)
 library(flexmix)
 library(pROC)
 library(modelsummary)
-library(plotly)
+#library(plotly)
 ```
 
 ```{r import data and map variables}
@@ -133,23 +133,19 @@ data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ
          num_days_5_drinks_or_more = ALQ140Q,
          had_12_drinks_lifetime = ALQ110)
 
+#ALCOHOL CONSUMPTION
 data <- data %>% 
   mutate(alcohol_consumption = case_when(
     (ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365) ~ "Current Drinker",
     ALQ110 == 1  & ALQ120Q == 0 ~ "Past drinker",
     ALQ101 == 2 & ALQ110 == 2  ~ "Never",
     is.na(ALQ101) ~ "Not Asked",
-    is.na(ALQ101) & is.na(ALQ101) ~ "Not Asked",
     is.na(ALQ120Q) ~ "Not Asked",
     is.na(ALQ130) ~ "Not Asked",
-    ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "Don't Know",
-    TRUE ~ as.character("Don't Know")
+    ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "NA",
+    TRUE ~ as.character("NA")
   )) %>% 
   mutate(alcohol_consumption = factor(alcohol_consumption))
-
-data %>% 
-  group_by(alcohol_consumption) %>% 
-  summarise(N = n())
 
 # data <- data %>% 
 #   mutate(num_drinks_weekly = case_when(
@@ -472,6 +468,12 @@ data_small3 <- data %>%
 #Create .csv file
 #write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
 ```
+```{r}
+data %>% 
+  group_by(alcohol_consumption) %>% 
+  summarise(N = n())
+```
+
 
 ```{r}
 library(vtable)
@@ -794,7 +796,7 @@ blr_multi_model_fit_stats(model1, model2, model3)
 ## Odds ratios and p-value  
 
 ```{r}
-model1_tbl <- tbl_regression(model1, exponentiate = FALSE) %>% 
+model1_tbl <- tbl_regression(model1, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -804,7 +806,7 @@ model1_tbl <- tbl_regression(model1, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)  
 
-model2_tbl <- tbl_regression(model2, exponentiate = FALSE) %>% 
+model2_tbl <- tbl_regression(model2, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -814,7 +816,7 @@ model2_tbl <- tbl_regression(model2, exponentiate = FALSE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05)
 
-model3_tbl <- tbl_regression(model3, exponentiate = FALSE) %>% 
+model3_tbl <- tbl_regression(model3, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
