@@ -147,46 +147,6 @@ data <- data %>%
   )) %>% 
   mutate(alcohol_consumption = factor(alcohol_consumption))
 
-# data <- data %>% 
-#   mutate(num_drinks_weekly = case_when(
-#     num_drinks_past_yr_unit == 1 ~ num_drinks_past_yr,
-#     num_drinks_past_yr_unit == 2 ~ num_drinks_past_yr/4.25,
-#     num_drinks_past_yr_unit == 3 ~ num_drinks_past_yr/52,
-#  #   num_drinks_past_yr == 777 ~ NA,
-#  #   num_drinks_past_yr == 999 ~ NA,
-#     TRUE ~ as.double(num_drinks_past_yr)
-#   ))
-# 
-# data <- data %>% 
-#   mutate(num_days_5_drinks_or_more = case_when(
-#     #convert to days per week
-#     ALQ140U == 1 ~ num_days_5_drinks_or_more,
-#     ALQ140U == 2 ~ num_days_5_drinks_or_more/4.25,
-#     ALQ140U == 3 ~ num_days_5_drinks_or_more/52,
-#     TRUE ~ as.double(num_days_5_drinks_or_more)
-#   ))
-
-#data <- data %>% 
-#  mutate(type_of_drinker = case_when(
-#    had_12_drinks_lifetime == 2 ~ "Abstainer",
-#    num_days_5_drinks_or_more >= 1 ~ "Harmful",
-#    age >= 65 & num_drinks_weekly > 7 ~ "Harmful",
-#    had_12_drinks_in_1yr == 1 & (age < 65 | num_days_5_drinks_or_more < 1) & gender == 2 & num_drinks_weekly #<= 7 ~ "Moderate",
-#    had_12_drinks_in_1yr == 1 & (age < 65 | num_days_5_drinks_or_more < 1) & gender == 2 & num_drinks_weekly #> 7 ~ "Harmful",
-#    had_12_drinks_in_1yr == 1 & (age < 65 | num_days_5_drinks_or_more < 1) & gender == 1 & num_drinks_weekly #> 14 ~ "Harmful",
-#    had_12_drinks_in_1yr == 1 & (age < 65 | num_days_5_drinks_or_more < 1) & gender == 1 & num_drinks_weekly #<= 14 ~ "Moderate",
-#    TRUE ~ as.character("NA")
-#  )) %>% 
-#  mutate(risk_alcohol = case_when(
-#    type_of_drinker == "Harmful" ~ 1,
-#    TRUE ~ as.double(0)
-#  ))
-
-
-
-
-
-
 #SSQ
 xpt <- foreign::read.xport("../Data/SSQ_E.xpt")
 
@@ -199,17 +159,6 @@ xpt <- foreign::read.xport("../Data/MCQ_E.xpt")
 data <- merge(data, xpt[c("SEQN", "MCQ160E", "MCQ160F")], by = "SEQN", all.x = TRUE) %>% 
   rename(heart_attack = MCQ160E,
          stroke = MCQ160F)
-
-#DR1FF
-#xpt <- foreign::read.xport("../Data/DR1IFF_E.xpt") %>% 
-#  dplyr::select(SEQN, DR1IKCAL) %>% 
-#  group_by(SEQN) %>% 
-#  summarise(SEQN = SEQN,
-#            calories = mean(DR1IKCAL * 1000, na.rm = T)) %>% 
-#  distinct()
-
-#data <- merge(data, xpt, by = "SEQN", all.x = TRUE)
-
 
 data$gender <- factor(data$gender,levels = c(1,2), labels = c("Male", "Female"))
 
@@ -243,7 +192,6 @@ data <- data %>%
 data$marital_status <- factor(data$marital_status, levels = c("Never Married", "Married", "Previously Married", "Refused", "Don't Know"),
                               labels = c("Never Married", "Married", "Previously Married", "Refused", "Don't Know"))
 
-
 data$born_outside_us <- factor(data$born_outside_us, levels = c(1,2,4,5), labels = c("Born in US", "Born in Mexico", "Born in other spanish speaking country", "Born in other non-spanish speaking country"))
 
 data <- data %>% 
@@ -253,7 +201,6 @@ data <- data %>%
   ))
 
 data$born_outside_us <- factor(data$born_outside_us, levels = c("Born in US", "Born outside US"), labels = c("Born in US", "Born outside US"))
-
 
 data$poverty_level_category <- factor(data$poverty_level_category, c(1,2,3), c("Poverty Index <= 1.3", "Poverty Index in (1.30, 1.85)", "Poverty Index > 1.85"))
 
