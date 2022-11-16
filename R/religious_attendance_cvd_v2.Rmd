@@ -7,7 +7,7 @@ output: html_notebook
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
-```{r}
+```{r, warning = FALSE, message = TRUE}
 library(tidyverse)
 library(kableExtra)
 library(gtsummary)
@@ -24,7 +24,6 @@ library(MuMIn)
 library(flexmix)
 library(pROC)
 library(modelsummary)
-#library(plotly)
 ```
 
 ```{r import data and map variables}
@@ -116,11 +115,21 @@ data <- data %>%
   ))
 
 
-#SMQRTU
+#TOBACCO
+#SMQRTU 
 xpt <- foreign::read.xport("../Data/SMQRTU_E.xpt")
 
-data <- merge(data, xpt[c("SEQN", "SMQ680")], by = "SEQN", all.x = TRUE) %>% 
-  rename(tobacco_use_5_days = SMQ680)
+data <- merge(data, xpt[c("SEQN","SMQ020", "SMQ040")], by = "SEQN", all.x = TRUE)
+
+data <- data %>% 
+  mutate(tobacco_use = case_when(
+    SMQ020 == 2 & SMQ040 = 3 ~ "Never",
+    SMQ040 %in% c(1,2,3) ~ "Current",
+    SMQ020 == 1 & SMQ040 == 3 ~ "Former",
+    TRUE ~ as.character("Not asked")
+  ))
+
+
 
 #ALQ
 xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
@@ -241,23 +250,6 @@ data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(1,2
 data$food_ran_out <- factor(data$food_ran_out, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
 data$mobility_limit <- factor(data$mobility_limit, c(1,2), c("Yes", "No"))
 data$high_blood_pressure <- factor(data$high_blood_pressure, c(1,2), c("Yes", "No"))
-
-
-#risk_tobacco
-data <- data %>% 
-  mutate(tobacco_use_5_days = case_when(
-    tobacco_use_5_days == 1 ~ "Yes",
-    tobacco_use_5_days == 2 ~ "No",
-    tobacco_use_5_days %in% c(7,9) ~ "Unknown",
-    is.na(tobacco_use_5_days) ~ "Unknown"
-  )) %>% 
-  mutate(risk_tobacaco = case_when(
-    tobacco_use_5_days == "Yes" ~ 1,
-    TRUE ~ as.double(0)
-  ))
-
-data$tobacco_use_5_days <- factor(data$tobacco_use_5_days, c("Yes", "No"), c("Yes", "No"))
-
 
 data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
 
@@ -380,7 +372,7 @@ data_small2 <-   data %>%
          num_healthcare_visits, 
          worried_house_run_out_food, 
          food_ran_out, 
-         tobacco_use_5_days,
+         tobacco_use,
          alcohol_consumption, 
          fasting_glucose, 
          mobility_limit, 
@@ -401,7 +393,7 @@ data_small3 <- data %>%
          num_healthcare_visits, 
          worried_house_run_out_food, 
          food_ran_out, 
-         tobacco_use_5_days,
+         tobacco_use,
          alcohol_consumption, 
          fasting_glucose, 
          mobility_limit, 
@@ -416,12 +408,12 @@ data_small3 <- data %>%
 #Create .csv file
 #write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
 ```
+
 ```{r}
 data %>% 
   group_by(alcohol_consumption) %>% 
   summarise(N = n())
 ```
-
 
 ```{r}
 library(vtable)
@@ -437,7 +429,7 @@ data %>%
          num_healthcare_visits, 
          worried_house_run_out_food, 
          food_ran_out, 
-         tobacco_use_5_days,
+         tobacco_use,
          alcohol_consumption, 
          fasting_glucose, 
          mobility_limit, 
@@ -447,13 +439,12 @@ data %>%
   sumtable(out = "csv", file = "variables.csv")
 ```
 
-
 ```{r, eval = FALSE}
 frequency_table <- as.data.frame(table(data$age, data$gender, data$ethnicity, data$education, data$marital_status,
                                        data$poverty_level_category,
                                        data$health_insurance, data$num_healthcare_visits, data$ever_received_food_stamps,
                                        data$worried_house_run_out_food, data$food_ran_out, data$mobility_limit,
-                                       data$high_blood_pressure,data$fasting_glucose, data$tobacco_use_5_days,
+                                       data$high_blood_pressure,data$fasting_glucose, data$tobacco_use,
                                        data$alcohol_consumption, data$religious_attendance,
                                        data$heart_attack, data$stroke)) %>% 
                   filter(Freq >= 1)
@@ -487,7 +478,7 @@ data %>%
   kable_paper()
 ```
 
-# Heart attack and Stroke Prevalence  
+# Heart attack and Stroke Prevalence
 
 ```{r heart attack and stroke table}
 as.data.frame(table(data$heart_attack, data$stroke)) %>% 
@@ -502,7 +493,7 @@ as.data.frame(table(data$heart_attack, data$stroke)) %>%
   add_header_above(c(" " = 1, "Stroke" = 2))
 ```
 
-# Number of healthcare visits per year by cardiovascular disease history  
+# Number of healthcare visits per year by cardiovascular disease history
 
 ```{r, warning=FALSE}
 p1 <- as.data.frame(table(data$cvd, data$num_healthcare_visits)) %>% 
@@ -541,17 +532,17 @@ p2
 
 # Model Selection
 
-## Cardiovascular Disease: Social, Health, and Religious Attendance Summaries  
+## Cardiovascular Disease: Social, Health, and Religious Attendance Summaries
 
 ```{r}
 #Social determinants only
 model1 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,data = data_small1, family = "binomial")
 
 #Social + health
-model2 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + alcohol_consumption +fasting_glucose + mobility_limit + high_blood_pressure, data = data_small2, family = "binomial")
+model2 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + alcohol_consumption +fasting_glucose + mobility_limit + high_blood_pressure, data = data_small2, family = "binomial")
 
 #all variables
-model3 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
+model3 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
                 data = data_small3, family = "binomial")
@@ -565,7 +556,7 @@ summary(model2)
 summary(model3)
 ```
 
-## Chi Sq model significance   
+## Chi Sq model significance
 
 ```{r}
 data.frame(
@@ -580,7 +571,7 @@ data.frame(
 #  kable_paper() 
 ```
 
-## model classification confusion matrix  
+## model classification confusion matrix
 
 ```{r}
 #make train and test sets
@@ -647,7 +638,7 @@ confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 ```{r}
-model2_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
+model2_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + mobility_limit + high_blood_pressure, 
                 data = train.data2, family = "binomial")
@@ -690,7 +681,7 @@ confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 ```{r}
-model3_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use_5_days + 
+model3_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
                 data = train.data3, family = "binomial")
@@ -730,8 +721,7 @@ dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 confusionMatrix(conf.matrix, positive = "pos")
 ```
 
-
-# Model Fit Statistics  
+# Model Fit Statistics
 
 ```{r}
 blr_model_fit_stats(model1)
@@ -741,7 +731,7 @@ blr_model_fit_stats(model3)
 blr_multi_model_fit_stats(model1, model2, model3)
 ```
 
-## Odds ratios and p-value  
+## Odds ratios and p-value
 
 ```{r}
 model1_tbl <- tbl_regression(model1, exponentiate = TRUE) %>% 
@@ -777,5 +767,3 @@ model3_tbl <- tbl_regression(model3, exponentiate = TRUE) %>%
 tbl_merge(tbls = list(model1_tbl, model2_tbl, model3_tbl),
           tab_spanner = c("Model 1", "Model 2", "Model 3"))
 ```
-
-
