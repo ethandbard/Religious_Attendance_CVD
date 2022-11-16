@@ -308,6 +308,7 @@ data <- data %>%
     tobacco_use_5_days == "Yes" ~ 1,
     TRUE ~ as.double(0)
   ))
+
 data$tobacco_use_5_days <- factor(data$tobacco_use_5_days, c("Yes", "No"), c("Yes", "No"))
 
 
