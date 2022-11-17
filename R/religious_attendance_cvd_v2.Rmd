@@ -1,6 +1,8 @@
 ---
 title: "Religious Attendance and CVD"
-output: html_notebook 
+output: 
+  html_notebook: 
+    fig_width: 4
 ---
 
 ```{r, include = FALSE}
@@ -37,6 +39,27 @@ data <- xpt[c("SEQN", "RIAGENDR", "RIDAGEYR", "RIDRETH1", "DMDEDUC2", "DMDMARTL"
          education = DMDEDUC2,
          marital_status = DMDMARTL,
          born_outside_us = DMDBORN2)
+
+data <- data %>% 
+  filter(age >= 40)
+
+#TOBACCO
+#SMQ
+xpt <- foreign::read.xport("../Data/SMQ_E.xpt")
+
+
+data <- merge(data, xpt[c("SEQN","SMQ020", "SMQ040")], by = "SEQN", all.x = TRUE)
+
+data <- data %>% 
+  mutate(tobacco_use = case_when(
+    SMQ020 == 2  ~ "Never",
+    SMQ040 %in% c(1,2) ~ "Current",
+    SMQ040 == 3 ~ "Former",
+    TRUE ~ as.character("Not asked")
+  ))
+
+data <- data %>% 
+  mutate(tobacco_use = factor(tobacco_use, levels = c("Never", "Current", "Former", "Not asked")))
 
 #INQ
 xpt <- foreign::read.xport("../Data/INQ_E.xpt")
@@ -91,7 +114,6 @@ data <- merge(data,xpt[c("SEQN", "BPQ020")], by = "SEQN", all.x = TRUE) %>%
     TRUE ~ as.double(0)
   ))
 
-
 #GLU
 xpt <- foreign::read.xport("../Data/GLU_E.xpt")
 
@@ -99,37 +121,20 @@ data <- merge(data, xpt[c("SEQN", "LBDGLUSI")], by = "SEQN", all.x = TRUE) %>%
   rename(fasting_glucose = LBDGLUSI)
 
 #fasting glucose
-data <- data %>% 
-  mutate(fasting_glucose = case_when(
-    fasting_glucose <= 4.995 ~ "Not at Risk",
-    fasting_glucose > 4.995 ~ "At Risk",
-    is.na(fasting_glucose) ~ "Unknown"
-  ))
+#data <- data %>% 
+#  mutate(fasting_glucose = case_when(
+#    fasting_glucose <= 4.995 ~ "Not at Risk",
+#    fasting_glucose > 4.995 ~ "At Risk",
+#    is.na(fasting_glucose) ~ "Unknown"
+#  ))
 
 #risk_glucose
-data$fasting_glucose <- factor(data$fasting_glucose, levels = c("Not at Risk", "At Risk"), c("Not at Risk", "At Risk"))
-data <- data %>% 
-  mutate(risk_glucose = case_when(
-    fasting_glucose == "At Risk" ~ 1,
-    TRUE ~ as.double(0)
-  ))
-
-
-#TOBACCO
-#SMQRTU 
-xpt <- foreign::read.xport("../Data/SMQRTU_E.xpt")
-
-data <- merge(data, xpt[c("SEQN","SMQ020", "SMQ040")], by = "SEQN", all.x = TRUE)
-
-data <- data %>% 
-  mutate(tobacco_use = case_when(
-    SMQ020 == 2 & SMQ040 = 3 ~ "Never",
-    SMQ040 %in% c(1,2,3) ~ "Current",
-    SMQ020 == 1 & SMQ040 == 3 ~ "Former",
-    TRUE ~ as.character("Not asked")
-  ))
-
-
+#data$fasting_glucose <- factor(data$fasting_glucose, levels = c("Not at Risk", "At Risk"), c("Not at Risk", "At Risk"))
+#data <- data %>% 
+#  mutate(risk_glucose = case_when(
+#    fasting_glucose == "At Risk" ~ 1,
+#    TRUE ~ as.double(0)
+#  ))
 
 #ALQ
 xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
@@ -145,16 +150,19 @@ data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ
 #ALCOHOL CONSUMPTION
 data <- data %>% 
   mutate(alcohol_consumption = case_when(
+    ALQ101 == 2 & ALQ110 == 2  ~ "Never",
     (ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365) ~ "Current Drinker",
     ALQ110 == 1  & ALQ120Q == 0 ~ "Past drinker",
-    ALQ101 == 2 & ALQ110 == 2  ~ "Never",
     is.na(ALQ101) ~ "Not Asked",
     is.na(ALQ120Q) ~ "Not Asked",
     is.na(ALQ130) ~ "Not Asked",
     ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "NA",
-    TRUE ~ as.character("NA")
+    TRUE ~ as.character("Not Asked")
   )) %>% 
   mutate(alcohol_consumption = factor(alcohol_consumption))
+
+data <- data %>% 
+  filter(alcohol_consumption != "NA")
 
 #SSQ
 xpt <- foreign::read.xport("../Data/SSQ_E.xpt")
@@ -244,8 +252,7 @@ data$medicaid <- factor(data$medicaid, c( "Unknown", "17"), c("Not Covered", "Co
 
 data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5), c("None", "1", "2 to 3", "4 to 9", "10 to 12", "13 or more"))
 data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2), c("Yes", "No"))
-#data$food_stamps_past_yr <- factor(data$food_stamps_past_yr, c(1,2,7,9), c("Yes", "No", "Refused", "Don't Know"))
-#data$num_months_WIC targeted 0-11 years
+
 data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
 data$food_ran_out <- factor(data$food_ran_out, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
 data$mobility_limit <- factor(data$mobility_limit, c(1,2), c("Yes", "No"))
@@ -279,25 +286,23 @@ data <- merge(data, xpt[c("SEQN", "BMXWT", "BMXHT", "BMXWAIST")], by = "SEQN", a
          weight = BMXWT,
          waist = BMXWAIST)
 
+#RFM
 data <- data %>% 
   mutate(rfm = case_when(
     gender == "Male" ~ as.double(64 - (20 * (height / waist))),
     gender == "Female" ~ as.double(76 - (20 * (height / waist)))
   ))
 
-data <- data %>% 
-  mutate(risk_rfm = case_when(
-    gender == "Male" & rfm >= 30 ~ 1,
-    gender == "Female" & rfm >= 40 ~ 1,
-    TRUE ~ as.numeric(0)
-  ))
+#data <- data %>% 
+#  mutate(rfm = case_when(
+#    gender == "Male" & rfm >= 30 ~ "At Risk",
+#    gender == "Male" & rfm <= 30 ~ "Not at Risk",
+#    gender == "Female" & rfm >= 40 ~ "At Risk",
+#    gender == "Female" & rfm <= 40 ~ "Not at Risk"
+#  ))
 
 #data <- data %>% 
-#  group_by(SEQN) %>% 
-#  mutate(risk_sum = sum(risk_glucose, risk_mobility, risk_bp, risk_tobacaco, risk_alcohol, risk_rfm))
-
-
-#data$risk_sum <- factor(data$risk_sum)
+#  mutate(rfm = factor(rfm))
 
 data <- data %>% 
   mutate(weekly_drinking = case_when(
@@ -316,13 +321,7 @@ data <- data %>%
          )
     )
 
-
-
 data$type_of_drinker <- factor(data$type_of_drinker, c("Abstainer", "Harmful", "Moderate"), c("Abstainer", "Harmful", "Moderate"))
-
-
-data <- data %>% 
-  filter(age >= 20)
 
 data <- data %>% 
   mutate(cvd = case_when(
@@ -331,20 +330,20 @@ data <- data %>%
   ))
 
 
-data <- data %>% 
-  mutate(age_num = age,
-    age = case_when(
-    age %in% seq(20,39) ~ "young adult-1",
-    age %in% seq(40,45) ~ "young adult-2",
-    age %in% seq(46,64) ~ "middle age",
-    age >= 65 ~ "older adult"
-  )) %>% 
-  mutate(age = factor(age))
+#data <- data %>% 
+#  mutate(age_num = age,
+#    age = case_when(
+#    age %in% seq(20,39) ~ "young adult-1",
+#    age %in% seq(40,45) ~ "young adult-2",
+#    age %in% seq(46,64) ~ "middle age",
+#    age >= 65 ~ "older adult"
+#  )) %>% 
+#  mutate(age = factor(age))
 
 #Smaller dataset with no missing values
 
 #model 1
-data_small1 <-   data %>% 
+data_small1 <- data %>% 
   dplyr::select(gender, 
          age, 
          rfm, 
@@ -408,6 +407,7 @@ data_small3 <- data %>%
 #Create .csv file
 #write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
 ```
+
 
 ```{r}
 data %>% 
@@ -484,8 +484,6 @@ data %>%
 as.data.frame(table(data$heart_attack, data$stroke)) %>% 
   rename('Heart Attack' = Var1,
          'Stroke' = Var2) %>% 
-  #mutate(Percent = Freq / nrow(data) * 100) %>% 
-#  arrange(-Percent) %>% 
   pivot_wider(names_from = Stroke, values_from = Freq) %>% 
   kable(caption = 'Heart Attack and Stroke Crosstab',
         align = c('l')) %>% 
@@ -530,46 +528,162 @@ p1
 p2
 ```
 
-# Model Selection
-
 ## Cardiovascular Disease: Social, Health, and Religious Attendance Summaries
 
 ```{r}
 #Social determinants only
-model1 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,data = data_small1, family = "binomial")
+model1f <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,
+               data = filter(data_small1, gender == "Female"), family = "binomial")
+
+model1m <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,
+               data = filter(data_small1, gender == "Male"), family = "binomial")
 
 #Social + health
-model2 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + alcohol_consumption +fasting_glucose + mobility_limit + high_blood_pressure, data = data_small2, family = "binomial")
+model2f <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + alcohol_consumption +fasting_glucose + mobility_limit + high_blood_pressure,
+               data = filter(data_small2, gender == "Female"), family = "binomial")
+
+model2m <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + alcohol_consumption +fasting_glucose + mobility_limit + high_blood_pressure, 
+               data = filter(data_small2, gender == "Male"), family = "binomial")
+
 
 #all variables
-model3 <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
-                  alcohol_consumption +
-                  fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
-                data = data_small3, family = "binomial")
+model3f <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + alcohol_consumption + fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
+                data = filter(data_small3, gender == "Female"), family = "binomial")
+
+model3m <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + alcohol_consumption + fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
+                data = filter(data_small3, gender == "Male"), family = "binomial")
 ```
 
 ```{r}
-summary(model1)
+summary(model1f)
+summary(model1m)
 
-summary(model2)
+summary(model2f)
+summary(model2m)
 
-summary(model3)
+summary(model3f)
+summary(model3m)
 ```
 
 ## Chi Sq model significance
 
 ```{r}
 data.frame(
-  Models = c("Model 1", "Model 2", "Model 3"),
-  ChiSq_significance = c(with(model1, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-                         with(model2, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-                         with(model3, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))),
-  BIC = c(BIC(model1),
-          BIC(model2),
-          BIC(model3)))# %>% 
-#  kable(caption = "Model significance - Chi Sq") %>% 
-#  kable_paper() 
+  Models = c("Model 1f", 
+             "Model 1m", 
+             "Model 2f", 
+             "Model 2m", 
+             "Model 3f",
+             "Model 3m"),
+  ChiSq_significance = c(with(model1f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model1m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model2f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model2m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model3f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model3m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))),
+  BIC = c(BIC(model1f),
+          BIC(model1m),
+          BIC(model2f),
+          BIC(model2m),
+          BIC(model3f),
+          BIC(model3m)))
 ```
+
+# Model Fit Statistics
+
+```{r}
+blr_model_fit_stats(model1f)
+blr_model_fit_stats(model1m)
+blr_model_fit_stats(model2f)
+blr_model_fit_stats(model2m)
+blr_model_fit_stats(model3f)
+blr_model_fit_stats(model3m)
+
+blr_multi_model_fit_stats(model1f, 
+                          model1m, 
+                          model2f, 
+                          model2m, 
+                          model3f,
+                          model3m)
+```
+
+## Odds ratios and p-value
+
+```{r}
+model1f_tbl <- tbl_regression(model1f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+model1m_tbl <- tbl_regression(model1m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05) 
+
+model2f_tbl <- tbl_regression(model2f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+model2m_tbl <- tbl_regression(model2m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+model3f_tbl <- tbl_regression(model3f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+model3m_tbl <- tbl_regression(model3m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+tbl_merge(tbls = list(model1f_tbl, 
+                      model1m_tbl, 
+                      model2f_tbl, 
+                      model2m_tbl, 
+                      model3f_tbl,
+                      model3m_tbl),
+          tab_spanner = c("Model 1f", 
+                          "Model 1m", 
+                          "Model 2f", 
+                          "Model 2m", 
+                          "Model 3f",
+                          "Model 3m"))
+```
+
 
 ## model classification confusion matrix
 
@@ -686,7 +800,6 @@ model3_train <- glm(cvd ~ gender + age + rfm + ethnicity + education + marital_s
                   fasting_glucose + mobility_limit + high_blood_pressure + religious_attendance, 
                 data = train.data3, family = "binomial")
 
-
 probabilities3 <- model3_train %>% predict(test.data3, type = "response")
 predicted.classes3 <- ifelse(probabilities3 > 0.5, "pos", "neg")
 
@@ -721,49 +834,4 @@ dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 confusionMatrix(conf.matrix, positive = "pos")
 ```
 
-# Model Fit Statistics
 
-```{r}
-blr_model_fit_stats(model1)
-blr_model_fit_stats(model2)
-blr_model_fit_stats(model3)
-
-blr_multi_model_fit_stats(model1, model2, model3)
-```
-
-## Odds ratios and p-value
-
-```{r}
-model1_tbl <- tbl_regression(model1, exponentiate = TRUE) %>% 
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>% 
-  modify_column_hide(column = ci) %>% 
-  bold_labels() %>% 
-  bold_p(t = 0.05)  
-
-model2_tbl <- tbl_regression(model2, exponentiate = TRUE) %>% 
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>% 
-  modify_column_hide(column = ci) %>% 
-  bold_labels() %>% 
-  bold_p(t = 0.05)
-
-model3_tbl <- tbl_regression(model3, exponentiate = TRUE) %>% 
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>% 
-  modify_column_hide(column = ci) %>% 
-  bold_labels() %>% 
-  bold_p(t = 0.05)
-
-tbl_merge(tbls = list(model1_tbl, model2_tbl, model3_tbl),
-          tab_spanner = c("Model 1", "Model 2", "Model 3"))
-```
