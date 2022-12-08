@@ -740,20 +740,14 @@ train.data3m <- data_small3m[training.samples, ]
 test.data3m <- data_small3m[-training.samples, ]
 ```
 
+```{r}
+findFn('roc')
+```
+
 
 ```{r}
 model1f_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
                 data = train.data1f, family = "binomial")
-
-#10 fold cross validation to determine best classification threshold
-folds <- createFolds(train.data1f$cvd, k = 10)
-model <- train(as.factor(cvd) ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,
-      data = train.data1f,
-      method = "glm",
-      metric = "Precision",
-      trControl = trainControl(method = "cv", index = folds))
-model$bestTune
-
 
 probabilities1f <- model1f_train %>% predict(test.data1f, type = "response")
 predicted.classes1f <- ifelse(probabilities1f > 0.09, "pos", "neg")
@@ -786,9 +780,15 @@ df %>%
   labs(title = "Model 1: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") + 
   scale_fill_grey(start = 0.6, end = 0.4) 
 
+
+#PROBABILITIES AND OPTIMAL THRESHOLD
 test.data1f$prob = probabilities1f
 plot(roc(cvd ~ prob, data = test.data1f), main = "Model 1")
-roc(cvd ~ prob, data = test.data1f)
+roc_obj <- roc(cvd ~ prob, data = test.data1f)
+roc_obj
+optimal_point <- coords(roc_obj)
+optimal_threshold <- optimal_point$threshold
+#optimal_threshold
 
 conf.matrix <- table(predicted.classes1f, test.data1f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
@@ -813,7 +813,6 @@ as.data.frame(table(predicted.classes1m, test.data1m$cvd)) %>%
   kable(caption = 'Model 1m Predictions', align = c("l")) %>% 
   kable_paper() %>% 
   add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
-
 
 #probabilities box plot
 
