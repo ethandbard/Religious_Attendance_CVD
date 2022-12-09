@@ -960,4 +960,69 @@ dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 confusionMatrix(conf.matrix, positive = "pos")
 ```
 
+# Simplified Model
+
+```{r, eval = false}
+data_small4 <- data %>% 
+  dplyr::select(age,
+                gender,
+                rfm,
+                ethnicity,
+                education,
+                num_healthcare_visits,
+                food_ran_out,
+                fasting_glucose,
+                difficulty_walking,
+                difficulty_stairs,
+                cvd) %>% 
+  na.omit()
+
+data_small4f <- data_small4 %>% 
+  filter(gender == "Female")
+
+data_small4m <- data_small4 %>% 
+  filter(gender == "Male")
+
+model4f <- glm(cvd ~ age + ethnicity + education + num_healthcare_visits + food_ran_out + fasting_glucose + difficulty_walking + difficulty_stairs,
+               data = data_small4f, family = "binomial")
+
+model4m <- glm(cvd ~ age + ethnicity + education + num_healthcare_visits + food_ran_out + fasting_glucose + difficulty_walking + difficulty_stairs,
+               data = data_small4m, family = "binomial")
+
+summary(model4f)
+summary(model4m)
+
+data.frame(
+  Models = c("Model 4f", 
+             "Model 4m"),
+  ChiSq_significance = c(with(model4f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model4m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))),
+  BIC = c(BIC(model4f),
+          BIC(model4m)))
+
+model4f_tbl <- tbl_regression(model4f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+model4m_tbl <- tbl_regression(model4m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)
+
+tbl_merge(tbls = list(model4f_tbl, 
+                      model4m_tbl),
+          tab_spanner = c("Model 4f", 
+                          "Model 4m"))
+```
 
