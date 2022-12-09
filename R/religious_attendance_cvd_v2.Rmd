@@ -40,9 +40,6 @@ data <- xpt[c("SEQN", "RIAGENDR", "RIDAGEYR", "RIDRETH1", "DMDEDUC2", "DMDMARTL"
          marital_status = DMDMARTL,
          born_outside_us = DMDBORN2)
 
-data <- data %>% 
-  filter(age >= 40)
-
 #TOBACCO
 #SMQ
 xpt <- foreign::read.xport("../Data/SMQ_E.xpt")
@@ -333,6 +330,8 @@ data <- data %>%
     TRUE ~ as.numeric(0)
   ))
 
+data <- data %>% 
+  filter(age >= 40)
 
 #data <- data %>% 
 #  mutate(age_num = age,
@@ -673,6 +672,101 @@ tbl_merge(tbls = list(model1f_tbl,
                           "Model 3m"))
 ```
 
+## Model ethnicity breakdowns
+```{r}
+# Ethnicity Distributions
+
+#model1f
+data_small1f %>% 
+  ggplot(aes(x = ethnicity)) + 
+  geom_bar(stat = "count") +
+  theme_minimal() +
+  labs(x = "", y = "", title = "Model 1f Participants' Ethnicity Distribution") +
+  geom_text(aes(label = scales::percent(..count.. / sum(..count..))), stat = "count", vjust = -0.5)
+
+#model1m
+data_small1m %>% 
+  ggplot(aes(x = ethnicity)) + 
+  geom_bar(stat = "count") +
+  theme_minimal() +
+  labs(x = "", y = "", title = "Model 1m Participants' Ethnicity Distribution") +
+  geom_text(aes(label = scales::percent(..count.. / sum(..count..))), stat = "count", vjust = -0.5)
+
+#model2f
+data_small2f %>% 
+  ggplot(aes(x = ethnicity)) + 
+  geom_bar(stat = "count") +
+  theme_minimal() +
+  labs(x = "", y = "", title = "Model 1f Participants' Ethnicity Distribution") +
+  geom_text(aes(label = scales::percent(..count.. / sum(..count..))), stat = "count", vjust = -0.5)
+
+#model2m
+data_small2m %>% 
+  ggplot(aes(x = ethnicity)) + 
+  geom_bar(stat = "count") +
+  theme_minimal() +
+  labs(x = "", y = "", title = "Model 1m Participants' Ethnicity Distribution") +
+  geom_text(aes(label = scales::percent(..count.. / sum(..count..))), stat = "count", vjust = -0.5)
+
+#model3f
+data_small3f %>% 
+  ggplot(aes(x = ethnicity)) + 
+  geom_bar(stat = "count") +
+  theme_minimal() +
+  labs(x = "", y = "", title = "Model 3f Participants' Ethnicity Distribution") +
+  geom_text(aes(label = scales::percent(..count.. / sum(..count..))), stat = "count", vjust = -0.5)
+
+#model3m
+data_small3m %>% 
+  ggplot(aes(x = ethnicity)) + 
+  geom_bar(stat = "count") +
+  theme_minimal() +
+  labs(x = "", y = "", title = "Model 3m Participants' Ethnicity Distribution") +
+  geom_text(aes(label = scales::percent(..count.. / sum(..count..))), stat = "count", vjust = -0.5)
+```
+
+```{r}
+#model age distributions
+
+data_small1f %>% 
+  ggplot(aes(x = ethnicity, y = age)) + 
+  geom_boxplot(fill = "gray") + 
+  theme_minimal() + 
+  labs(x = "", y = "Age", title = "Model 1f Age Distribution")
+
+data_small1m %>% 
+  ggplot(aes(x = ethnicity, y = age)) + 
+  geom_boxplot(fill = "gray") + 
+  theme_minimal() + 
+  labs(x = "", y = "Age", title = "Model 1m Age Distribution")
+
+data_small2f %>% 
+  ggplot(aes(x = ethnicity, y = age)) + 
+  geom_boxplot(fill = "gray") + 
+  theme_minimal() + 
+  labs(x = "", y = "Age", title = "Model 2f Age Distribution")
+
+data_small2m %>% 
+  ggplot(aes(x = ethnicity, y = age)) + 
+  geom_boxplot(fill = "gray") + 
+  theme_minimal() + 
+  labs(x = "", y = "Age", title = "Model 2m Age Distribution")
+
+data_small3f %>% 
+  ggplot(aes(x = ethnicity, y = age)) + 
+  geom_boxplot(fill = "gray") + 
+  theme_minimal() + 
+  labs(x = "", y = "Age", title = "Model 3f Age Distribution")
+
+data_small3m %>% 
+  ggplot(aes(x = ethnicity, y = age)) + 
+  geom_boxplot(fill = "gray") + 
+  theme_minimal() + 
+  labs(x = "", y = "Age", title = "Model 3m Age Distribution")
+
+```
+
+
 
 ## model classification confusion matrix
 
@@ -969,7 +1063,6 @@ data_small4 <- data %>%
                 rfm,
                 ethnicity,
                 education,
-                num_healthcare_visits,
                 food_ran_out,
                 fasting_glucose,
                 difficulty_walking,
@@ -983,10 +1076,10 @@ data_small4f <- data_small4 %>%
 data_small4m <- data_small4 %>% 
   filter(gender == "Male")
 
-model4f <- glm(cvd ~ age + ethnicity + education + num_healthcare_visits + food_ran_out + fasting_glucose + difficulty_walking + difficulty_stairs,
+model4f <- glm(cvd ~ age + ethnicity + education  + food_ran_out + fasting_glucose + difficulty_walking + difficulty_stairs,
                data = data_small4f, family = "binomial")
 
-model4m <- glm(cvd ~ age + ethnicity + education + num_healthcare_visits + food_ran_out + fasting_glucose + difficulty_walking + difficulty_stairs,
+model4m <- glm(cvd ~ age + ethnicity + education + food_ran_out + fasting_glucose + difficulty_walking + difficulty_stairs,
                data = data_small4m, family = "binomial")
 
 summary(model4f)
