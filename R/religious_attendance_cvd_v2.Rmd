@@ -163,7 +163,7 @@ data <- data %>%
     ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "NA",
     TRUE ~ as.character("Not Asked")
   )) %>% 
-  mutate(alcohol_consumption = factor(alcohol_consumption))
+  mutate(alcohol_consumption = factor(alcohol_consumption, levels = c("Never", "Current Drinker", "past drinker", "Not Asked")))
 
 data <- data %>% 
   filter(alcohol_consumption != "NA")
@@ -191,7 +191,7 @@ data <- data %>%
 
 data$ethnicity <- factor(data$ethnicity, levels = c(3,1,4,5), labels = c( "Non-Hispanic White", "Hispanic", "Non-Hispanic Black", "Other"))
 
-data$education <- factor(data$education, levels = c(1,2,3,4,5), labels = c("Less than 9th grade", "9-11th Grade", "High School/GED", "Some college", "College Graduate or above"))
+data$education <- factor(data$education, levels = c(3,1,2,4,5), labels = c( "High School/GED", "Less than 9th grade", "9-11th Grade","Some college", "College Graduate or above"))
 
 data <- data %>% 
   mutate(education = case_when(
@@ -201,7 +201,7 @@ data <- data %>%
 
 data$education <- factor(data$education, levels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above"), labels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above"))
 
-data$marital_status <- factor(data$marital_status, levels = c(1,2,3,4,5,6), labels = c("Married", "Widowed", "Divorced", "Separated", "Never Married", "Living with partner"))
+data$marital_status <- factor(data$marital_status, levels = c(5,1,2,3,4,6), labels = c("Never Married", "Married", "Widowed", "Divorced", "Separated", "Living with partner"))
 
 data <- data %>% 
   mutate(marital_status = case_when(
@@ -223,7 +223,7 @@ data <- data %>%
 
 data$born_outside_us <- factor(data$born_outside_us, levels = c("Born in US", "Born outside US"), labels = c("Born in US", "Born outside US"))
 
-data$poverty_level_category <- factor(data$poverty_level_category, c(1,2,3), c("Poverty Index <= 1.3", "Poverty Index in (1.30, 1.85)", "Poverty Index > 1.85"))
+data$poverty_level_category <- factor(data$poverty_level_category, c(2,1,3), c("Poverty Index in (1.30, 1.85)", "Poverty Index <= 1.3", "Poverty Index > 1.85"))
 
 data <- data %>% 
   mutate(health_insurance = case_when(
@@ -257,10 +257,10 @@ data$medicaid <- factor(data$medicaid, c( "Unknown", "17"), c("Not Covered", "Co
 data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5), c("None", "1", "2 to 3", "4 to 9", "10 to 12", "13 or more"))
 data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2), c("Yes", "No"))
 
-data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
-data$food_ran_out <- factor(data$food_ran_out, c(1,2,3), c("Often True", "Sometimes true", "Never true"))
+data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(3,1,2), c("Never true", "Often True", "Sometimes true"))
+data$food_ran_out <- factor(data$food_ran_out, c(3, 1,2), c("Never true","Often True", "Sometimes true"))
 data$mobility_limit <- factor(data$mobility_limit, c(1,2), c("Yes", "No"))
-data$high_blood_pressure <- factor(data$high_blood_pressure, c(1,2), c("Yes", "No"))
+data$high_blood_pressure <- factor(data$high_blood_pressure, c(2,1), c("No", "Yes"))
 
 data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
 
