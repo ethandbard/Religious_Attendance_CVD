@@ -741,17 +741,27 @@ test.data3m <- data_small3m[-training.samples, ]
 ```
 
 ```{r}
-findFn('roc')
-```
-
-
-```{r}
 model1f_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
                 data = train.data1f, family = "binomial")
 
+#generate probabilities from model
 probabilities1f <- model1f_train %>% predict(test.data1f, type = "response")
-predicted.classes1f <- ifelse(probabilities1f > 0.09, "pos", "neg")
 
+#PROBABILITIES AND OPTIMAL THRESHOLD
+test.data1f$prob = probabilities1f
+plot(roc(cvd ~ prob, data = test.data1f), main = "Model 1f")
+roc_obj <- roc(cvd ~ prob, data = test.data1f)
+roc_obj
+possible_thresholds <- coords(roc_obj)
+best_threshold <- possible_thresholds %>% 
+  mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
+  filter(balanced_accuracy == max(balanced_accuracy))
+cat("Optimal threshold: ", best_threshold$threshold)
+
+#predicted classes - change threshold here
+predicted.classes1f <- ifelse(probabilities1f > best_threshold$threshold, "pos", "neg")
+
+#Confusion matrix using predicted classes
 as.data.frame(table(predicted.classes1f, test.data1f$cvd)) %>% 
   rename("CVD" = Var2,
          "Predicted Classes" = predicted.classes1f) %>% 
@@ -763,45 +773,35 @@ as.data.frame(table(predicted.classes1f, test.data1f$cvd)) %>%
   kable_paper() %>% 
   add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
 
-
-#probabilities box plot
-
-df <- data.frame(predictions = predicted.classes1f,
-           probabilities = probabilities1f,
-           observed = test.data1f$cvd)
-
-meds <- c(by(df$probabilities, df$observed, median))
-
-df %>% 
-  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
-  geom_boxplot() +
-  theme_minimal() +
-  theme(legend.position = "none") + 
-  labs(title = "Model 1: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") + 
-  scale_fill_grey(start = 0.6, end = 0.4) 
-
-
-#PROBABILITIES AND OPTIMAL THRESHOLD
-test.data1f$prob = probabilities1f
-plot(roc(cvd ~ prob, data = test.data1f), main = "Model 1")
-roc_obj <- roc(cvd ~ prob, data = test.data1f)
-roc_obj
-optimal_point <- coords(roc_obj)
-optimal_threshold <- optimal_point$threshold
-#optimal_threshold
+  
 
 conf.matrix <- table(predicted.classes1f, test.data1f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
-#confusionMatrix(conf.matrix, positive = "pos")
+confusionMatrix(conf.matrix, positive = "pos")
 ```
+
+
+
 
 ```{r}
 model1m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
                 data = train.data1m, family = "binomial")
 
 probabilities1m <- model1m_train %>% predict(test.data1m, type = "response")
-predicted.classes1m <- ifelse(probabilities1m > 0.5, "pos", "neg")
+
+#PROBABILITIES AND OPTIMAL THRESHOLD
+test.data1m$prob = probabilities1m
+plot(roc(cvd ~ prob, data = test.data1m), main = "Model 1m")
+roc_obj <- roc(cvd ~ prob, data = test.data1m)
+roc_obj
+possible_thresholds <- coords(roc_obj)
+best_threshold <- possible_thresholds %>% 
+  mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
+  filter(balanced_accuracy == max(balanced_accuracy))
+cat("Optimal threshold: ", best_threshold$threshold, "\n")
+
+predicted.classes1m <- ifelse(probabilities1m > best_threshold$threshold, "pos", "neg")
 
 as.data.frame(table(predicted.classes1m, test.data1m$cvd)) %>% 
   rename("CVD" = Var2,
@@ -814,30 +814,10 @@ as.data.frame(table(predicted.classes1m, test.data1m$cvd)) %>%
   kable_paper() %>% 
   add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
 
-#probabilities box plot
-
-df <- data.frame(predictions = predicted.classes1m,
-           probabilities = probabilities1m,
-           observed = test.data1m$cvd)
-
-meds <- c(by(df$probabilities, df$observed, median))
-
-df %>% 
-  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
-  geom_boxplot() +
-  theme_minimal() +
-  theme(legend.position = "none") + 
-  labs(title = "Model 1: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") + 
-  scale_fill_grey(start = 0.6, end = 0.4) 
-
-test.data1m$prob = probabilities1m
-plot(roc(cvd ~ prob, data = test.data1m), main = "Model 1")
-roc(cvd ~ prob, data = test.data1m)
-
 conf.matrix <- table(predicted.classes1m, test.data1m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
-#confusionMatrix(conf.matrix, positive = "pos")
+confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 
@@ -848,7 +828,19 @@ model2f_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + 
                 data = train.data2f, family = "binomial")
 
 probabilities2f <- model2f_train %>% predict(test.data2f, type = "response")
-predicted.classes2f <- ifelse(probabilities2f > 0.5, "pos", "neg")
+
+#PROBABILITIES AND OPTIMAL THRESHOLD
+test.data2f$prob = probabilities2f
+plot(roc(cvd ~ prob, data = test.data2f), main = "Model 2f")
+roc_obj <- roc(cvd ~ prob, data = test.data2f)
+roc_obj
+possible_thresholds <- coords(roc_obj)
+best_threshold <- possible_thresholds %>% 
+  mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
+  filter(balanced_accuracy == max(balanced_accuracy))
+cat("Optimal threshold: ", best_threshold$threshold, "\n")
+
+predicted.classes2f <- ifelse(probabilities2f > best_threshold$threshold, "pos", "neg")
 
 as.data.frame(table(predicted.classes2f, test.data2f$cvd)) %>% 
   rename("CVD" = Var2,
@@ -861,27 +853,10 @@ as.data.frame(table(predicted.classes2f, test.data2f$cvd)) %>%
   kable_paper() %>% 
   add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
 
-
-data.frame(predictions = predicted.classes2f,
-           probabilities = probabilities2f,
-           observed = test.data2f$cvd) %>% 
-  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
-  geom_boxplot() +
-  theme_minimal() +
-  theme(legend.position = "none") + 
-  labs(title = "Model 2f: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") +
-  scale_fill_grey(start = 0.6, end = 0.4)
-
-test.data2f$prob = probabilities2f
-
-plot(roc(cvd ~ prob, data = test.data2f), main = "Model 2f")
-
-roc(cvd ~ prob, data = test.data2f)
-
 conf.matrix <- table(predicted.classes2f, test.data2f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
-#confusionMatrix(conf.matrix, positive = "pos")
+confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 ```{r}
@@ -891,7 +866,19 @@ model2m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + 
                 data = train.data2m, family = "binomial")
 
 probabilities2m <- model2m_train %>% predict(test.data2m, type = "response")
-predicted.classes2m <- ifelse(probabilities2m > 0.5, "pos", "neg")
+
+#PROBABILITIES AND OPTIMAL THRESHOLD
+test.data2m$prob = probabilities2m
+plot(roc(cvd ~ prob, data = test.data2m), main = "Model 2m")
+roc_obj <- roc(cvd ~ prob, data = test.data2m)
+roc_obj
+possible_thresholds <- coords(roc_obj)
+best_threshold <- possible_thresholds %>% 
+  mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
+  filter(balanced_accuracy == max(balanced_accuracy))
+cat("Optimal threshold: ", best_threshold$threshold, "\n")
+
+predicted.classes2m <- ifelse(probabilities2m > best_threshold$threshold, "pos", "neg")
 
 as.data.frame(table(predicted.classes2m, test.data2m$cvd)) %>% 
   rename("CVD" = Var2,
@@ -904,25 +891,9 @@ as.data.frame(table(predicted.classes2m, test.data2m$cvd)) %>%
   kable_paper() %>% 
   add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
 
-
-data.frame(predictions = predicted.classes2m,
-           probabilities = probabilities2m,
-           observed = test.data2m$cvd) %>% 
-  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
-  geom_boxplot() +
-  theme_minimal() +
-  theme(legend.position = "none") + 
-  labs(title = "Model 2m: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") +
-  scale_fill_grey(start = 0.6, end = 0.4)
-
-test.data2m$prob = probabilities2m
-
-plot(roc(cvd ~ prob, data = test.data2m), main = "Model 2m")
-
-roc(cvd ~ prob, data = test.data2m)
-
 conf.matrix <- table(predicted.classes2m, test.data2m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
+confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 
@@ -933,7 +904,19 @@ model3f_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + 
                 data = train.data3f, family = "binomial")
 
 probabilities3f <- model3f_train %>% predict(test.data3f, type = "response")
-predicted.classes3f <- ifelse(probabilities3f > 0.5, "pos", "neg")
+
+#PROBABILITIES AND OPTIMAL THRESHOLD
+test.data3f$prob = probabilities3f
+plot(roc(cvd ~ prob, data = test.data3f), main = "Model 3f")
+roc_obj <- roc(cvd ~ prob, data = test.data3f)
+roc_obj
+possible_thresholds <- coords(roc_obj)
+best_threshold <- possible_thresholds %>% 
+  mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
+  filter(balanced_accuracy == max(balanced_accuracy))
+cat("Optimal threshold: ", best_threshold$threshold, "\n")
+
+predicted.classes3f <- ifelse(probabilities3f > best_threshold$threshold, "pos", "neg")
 
 as.data.frame(table(predicted.classes3f, test.data3f$cvd)) %>% 
   rename("CVD" = Var2,
@@ -946,23 +929,8 @@ as.data.frame(table(predicted.classes3f, test.data3f$cvd)) %>%
   kable_paper() %>% 
   add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
 
-data.frame(predictions = predicted.classes3f,
-           probabilities = probabilities3f,
-           observed = test.data3f$cvd) %>% 
-  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
-  geom_boxplot() +
-  theme_minimal() +
-  theme(legend.position = "none") + 
-  labs(title = "Model 3f: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") +
-  scale_fill_grey(start = 0.6, end = 0.4)
-
-test.data3f$prob = probabilities3f
-plot(roc(cvd ~ prob, data = test.data3f), main = "Model 3f")
-
-
 conf.matrix <- table(predicted.classes3f, test.data3f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
-
 confusionMatrix(conf.matrix, positive = "pos")
 ```
 
@@ -973,6 +941,18 @@ model3m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + 
                 data = train.data3m, family = "binomial")
 
 probabilities3m <- model3m_train %>% predict(test.data3m, type = "response")
+
+#PROBABILITIES AND OPTIMAL THRESHOLD
+test.data3m$prob = probabilities3m
+plot(roc(cvd ~ prob, data = test.data3m), main = "Model 3m")
+roc_obj <- roc(cvd ~ prob, data = test.data3m)
+roc_obj
+possible_thresholds <- coords(roc_obj)
+best_threshold <- possible_thresholds %>% 
+  mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
+  filter(balanced_accuracy == max(balanced_accuracy))
+cat("Optimal threshold: ", best_threshold$threshold, "\n")
+
 predicted.classes3m <- ifelse(probabilities3m > 0.5, "pos", "neg")
 
 as.data.frame(table(predicted.classes3m, test.data3m$cvd)) %>% 
@@ -986,23 +966,8 @@ as.data.frame(table(predicted.classes3m, test.data3m$cvd)) %>%
   kable_paper() %>% 
   add_header_above(c(" " = 1, "Been told to have had a heart attack or stroke" = 2))
 
-data.frame(predictions = predicted.classes3m,
-           probabilities = probabilities3m,
-           observed = test.data3m$cvd) %>% 
-  ggplot(aes(x = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke") ), y = probabilities, fill = factor(observed, labels = c("Never had a heart attack or stroke", "Had a heart attack or stroke")))) + 
-  geom_boxplot() +
-  theme_minimal() +
-  theme(legend.position = "none") + 
-  labs(title = "Model 3m: Estimated Probabilities vs Observed Cardiovascular Disease History", x = "", y = "Estimated probability") +
-  scale_fill_grey(start = 0.6, end = 0.4)
-
-test.data3m$prob = probabilities3m
-plot(roc(cvd ~ prob, data = test.data3m), main = "Model 3m")
-
-
 conf.matrix <- table(predicted.classes3m, test.data3m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
-
 confusionMatrix(conf.matrix, positive = "pos")
 ```
 
