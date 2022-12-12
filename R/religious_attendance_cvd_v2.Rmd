@@ -78,7 +78,11 @@ data <- merge(data, xpt[c("SEQN", "HIQ011", "HIQ031A", "HIQ031B", "HIQ031D")], b
 xpt <- foreign::read.xport("../Data/HUQ_E.xpt")
 
 data <- merge(data, xpt[c("SEQN", "HUQ050")], by = "SEQN", all.x = TRUE) %>% 
-  rename(num_healthcare_visits = HUQ050)
+  rename(num_healthcare_visits = HUQ050) %>% 
+  mutate(num_healthcare_visits = case_when(
+    num_healthcare_visits %in% c(0,1) ~ "1",
+    TRUE ~ as.character(num_healthcare_visits)
+  ))
 
 #FSQ
 xpt <- foreign::read.xport("../Data/FSQ_E.xpt")
@@ -96,12 +100,8 @@ xpt <- foreign::read.xport("../Data/PFQ_E.xpt")
 #risk_mobility
 data <- merge(data, xpt[c("SEQN","PFQ054")], by = "SEQN", all.x = TRUE)
 
-data$PFQ054
-
 data <- data %>%   
   dplyr::rename(difficulty_walking = PFQ054) 
-
-data$difficulty_walking
 
 data$difficulty_walking <- factor(data$difficulty_walking, levels = c(2,1), labels = c("No", "Yes"))
 
@@ -252,7 +252,7 @@ data$private_insurance <- factor(data$private_insurance, c("Unknown", "14"), c("
 data$medicare <- factor(data$medicare, c( "Unknown","15"), c("Not Covered", "Covered"))
 data$medicaid <- factor(data$medicaid, c( "Unknown", "17"), c("Not Covered", "Covered"))
 
-data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(0,1,2,3,4,5), c("None", "1", "2 to 3", "4 to 9", "10 to 12", "13 or more"))
+data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(1,2,3,4,5), c("0 to 1", "2 to 3","4 to 9","10 to 12", "13 or more"))
 data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2), c("Yes", "No"))
 
 data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(3,1,2), c("Never true", "Often True", "Sometimes true"))
@@ -360,8 +360,7 @@ data_small1 <- data %>%
          num_healthcare_visits, 
          worried_house_run_out_food, 
          food_ran_out, 
-         cvd)  %>% 
-  na.omit()
+         cvd)
 
 #model 2
 data_small2 <-   data %>% 
@@ -382,8 +381,7 @@ data_small2 <-   data %>%
          difficulty_walking,
         # difficulty_stairs,
          high_blood_pressure, 
-         cvd) %>% 
-  na.omit()
+         cvd)
 
 #model 3
 data_small3 <- data %>% 
@@ -405,28 +403,20 @@ data_small3 <- data %>%
        #  difficulty_stairs, 
          high_blood_pressure, 
          religious_attendance, 
-         cvd) %>% 
-  na.omit()
+         cvd)
 
-data_small1f <- data_small1 %>% filter(gender == "Female")
-data_small1m <- data_small1 %>% filter(gender == "Male")
-data_small2f <- data_small2 %>% filter(gender == "Female") 
-data_small2m <- data_small2 %>% filter(gender == "Male") 
-data_small3f <- data_small3 %>% filter(gender == "Female") 
-data_small3m <- data_small3 %>% filter(gender == "Male")
+data_small1f <- data_small1 %>% filter(gender == "Female") %>% na.omit()
+data_small1m <- data_small1 %>% filter(gender == "Male") %>% na.omit()
+data_small2f <- data_small2 %>% filter(gender == "Female")  %>% na.omit()
+data_small2m <- data_small2 %>% filter(gender == "Male")  %>% na.omit()
+data_small3f <- data_small3 %>% filter(gender == "Female")  %>% na.omit()
+data_small3m <- data_small3 %>% filter(gender == "Male") %>% na.omit()
 
 #Create .SAS file
 #write.foreign(df=data, datafile="../Data/nhanes0708.csv", codefile="../Data/nhanes0708.sas", package="SAS")
 
 #Create .csv file
 #write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
-```
-
-
-```{r}
-data %>% 
-  group_by(alcohol_consumption) %>% 
-  summarise(N = n())
 ```
 
 ```{r}
@@ -519,7 +509,7 @@ p2 <- as.data.frame(table(data$cvd, data$num_healthcare_visits)) %>%
   kable(caption = 'Number of Healthcare Visits Per Year by Cardiovascular Disease History',
         align = c("l")) %>% 
   kable_paper() %>% 
-  add_header_above(c(" " = 1, "Number of Healthcare Visits Per Year" = 6))
+  add_header_above(c(" " = 1, "Number of Healthcare Visits Per Year" = 5))
 
 p1 
 p2
@@ -773,32 +763,32 @@ data_small3m <- data_small3 %>%
   filter(gender == "Male")
 
 training.samples <- data_small1f$cvd %>% 
-  createDataPartition(p = 0.60, list = FALSE)
+  createDataPartition(p = .75, list = FALSE)
 train.data1f <- data_small1f[training.samples, ]
 test.data1f <- data_small1f[-training.samples, ]
 
 training.samples <- data_small1m$cvd %>% 
-  createDataPartition(p = 0.60, list = FALSE)
+  createDataPartition(p = .75, list = FALSE)
 train.data1m <- data_small1m[training.samples, ]
 test.data1m <- data_small1m[-training.samples, ]
 
 training.samples <- data_small2f$cvd %>% 
-  createDataPartition(p = 0.60, list = FALSE)
+  createDataPartition(p = .75, list = FALSE)
 train.data2f <- data_small2f[training.samples, ]
 test.data2f <- data_small2f[-training.samples, ]
 
 training.samples <- data_small2m$cvd %>% 
-  createDataPartition(p = 0.60, list = FALSE)
+  createDataPartition(p = .75, list = FALSE)
 train.data2m <- data_small2m[training.samples, ]
 test.data2m <- data_small2m[-training.samples, ]
 
 training.samples <- data_small3f$cvd %>% 
-  createDataPartition(p = 0.60, list = FALSE)
+  createDataPartition(p = .75, list = FALSE)
 train.data3f <- data_small3f[training.samples, ]
 test.data3f <- data_small3f[-training.samples, ]
 
 training.samples <- data_small3m$cvd %>% 
-  createDataPartition(p = 0.60, list = FALSE)
+  createDataPartition(p = .75, list = FALSE)
 train.data3m <- data_small3m[training.samples, ]
 test.data3m <- data_small3m[-training.samples, ]
 ```
@@ -813,13 +803,12 @@ probabilities1f <- model1f_train %>% predict(test.data1f, type = "response")
 #PROBABILITIES AND OPTIMAL THRESHOLD
 test.data1f$prob = probabilities1f
 plot(roc(cvd ~ prob, data = test.data1f), main = "Model 1f")
-roc_obj <- roc(cvd ~ prob, data = test.data1f)
-roc_obj
+roc_obj1f <- roc(cvd ~ prob, data = test.data1f)
 possible_thresholds <- coords(roc_obj)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
   filter(balanced_accuracy == max(balanced_accuracy))
-cat("Optimal threshold: ", best_threshold$threshold)
+cat("Optimal threshold: ", best_threshold$threshold, "\n")
 
 #predicted classes - change threshold here
 predicted.classes1f <- ifelse(probabilities1f > best_threshold$threshold, "pos", "neg")
@@ -841,11 +830,8 @@ as.data.frame(table(predicted.classes1f, test.data1f$cvd)) %>%
 conf.matrix <- table(predicted.classes1f, test.data1f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
-confusionMatrix(conf.matrix, positive = "pos")
+test_results1f <- confusionMatrix(conf.matrix, positive = "pos")
 ```
-
-
-
 
 ```{r}
 model1m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
@@ -856,8 +842,7 @@ probabilities1m <- model1m_train %>% predict(test.data1m, type = "response")
 #PROBABILITIES AND OPTIMAL THRESHOLD
 test.data1m$prob = probabilities1m
 plot(roc(cvd ~ prob, data = test.data1m), main = "Model 1m")
-roc_obj <- roc(cvd ~ prob, data = test.data1m)
-roc_obj
+roc_obj1m <- roc(cvd ~ prob, data = test.data1m)
 possible_thresholds <- coords(roc_obj)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
@@ -880,7 +865,7 @@ as.data.frame(table(predicted.classes1m, test.data1m$cvd)) %>%
 conf.matrix <- table(predicted.classes1m, test.data1m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
-confusionMatrix(conf.matrix, positive = "pos")
+test_results1m <- confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 
@@ -896,8 +881,7 @@ probabilities2f <- model2f_train %>% predict(test.data2f, type = "response")
 #PROBABILITIES AND OPTIMAL THRESHOLD
 test.data2f$prob = probabilities2f
 plot(roc(cvd ~ prob, data = test.data2f), main = "Model 2f")
-roc_obj <- roc(cvd ~ prob, data = test.data2f)
-roc_obj
+roc_obj2f <- roc(cvd ~ prob, data = test.data2f)
 possible_thresholds <- coords(roc_obj)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
@@ -920,7 +904,7 @@ as.data.frame(table(predicted.classes2f, test.data2f$cvd)) %>%
 conf.matrix <- table(predicted.classes2f, test.data2f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
-confusionMatrix(conf.matrix, positive = "pos")
+test_results2f <- confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 ```{r}
@@ -934,8 +918,7 @@ probabilities2m <- model2m_train %>% predict(test.data2m, type = "response")
 #PROBABILITIES AND OPTIMAL THRESHOLD
 test.data2m$prob = probabilities2m
 plot(roc(cvd ~ prob, data = test.data2m), main = "Model 2m")
-roc_obj <- roc(cvd ~ prob, data = test.data2m)
-roc_obj
+roc_obj2m <- roc(cvd ~ prob, data = test.data2m)
 possible_thresholds <- coords(roc_obj)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
@@ -957,7 +940,7 @@ as.data.frame(table(predicted.classes2m, test.data2m$cvd)) %>%
 
 conf.matrix <- table(predicted.classes2m, test.data2m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
-confusionMatrix(conf.matrix, positive = "pos")
+test_results2m <- confusionMatrix(conf.matrix, positive = "pos")
 ```
 
 
@@ -972,8 +955,7 @@ probabilities3f <- model3f_train %>% predict(test.data3f, type = "response")
 #PROBABILITIES AND OPTIMAL THRESHOLD
 test.data3f$prob = probabilities3f
 plot(roc(cvd ~ prob, data = test.data3f), main = "Model 3f")
-roc_obj <- roc(cvd ~ prob, data = test.data3f)
-roc_obj
+roc_obj3f <- roc(cvd ~ prob, data = test.data3f)
 possible_thresholds <- coords(roc_obj)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
@@ -995,10 +977,10 @@ as.data.frame(table(predicted.classes3f, test.data3f$cvd)) %>%
 
 conf.matrix <- table(predicted.classes3f, test.data3f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
-confusionMatrix(conf.matrix, positive = "pos")
+test_results3f <- confusionMatrix(conf.matrix, positive = "pos")
 ```
 
-```{r}
+```{r, warning = FALSE, message= FALSE}
 model3m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + difficulty_walking + high_blood_pressure + religious_attendance, 
@@ -1009,8 +991,7 @@ probabilities3m <- model3m_train %>% predict(test.data3m, type = "response")
 #PROBABILITIES AND OPTIMAL THRESHOLD
 test.data3m$prob = probabilities3m
 plot(roc(cvd ~ prob, data = test.data3m), main = "Model 3m")
-roc_obj <- roc(cvd ~ prob, data = test.data3m)
-roc_obj
+roc_obj3m <- roc(cvd ~ prob, data = test.data3m)
 possible_thresholds <- coords(roc_obj)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
@@ -1032,10 +1013,37 @@ as.data.frame(table(predicted.classes3m, test.data3m$cvd)) %>%
 
 conf.matrix <- table(predicted.classes3m, test.data3m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
-confusionMatrix(conf.matrix, positive = "pos")
+test_results3m <- confusionMatrix(conf.matrix, positive = "pos")
 ```
 
-# Simplified Model
+```{r}
+#Test Results dataframe
+
+test_results <- data.frame(Metrics = c("Sensitivity", "Specificity", "F1", "Balanced Accuracy"),
+           Model1f = c(test_results1f$byClass[c(1,2,7,11)]),
+           Model1m = c(test_results1m$byClass[c(1,2,7,11)]),
+           Model2f = c(test_results2f$byClass[c(1,2,7,11)]),
+           Model2m = c(test_results2m$byClass[c(1,2,7,11)]),
+           Model3f = c(test_results3f$byClass[c(1,2,7,11)]),
+           Model3m = c(test_results3m$byClass[c(1,2,7,11)])) %>% 
+  pivot_longer(cols = starts_with("Model"), names_to = "Model", values_to = "Value")
+
+
+test_results %>% 
+  kable() %>% 
+  kable_paper()
+
+test_results %>% 
+  ggplot(aes(x = Model, y = Value)) + 
+  geom_bar(stat = "identity") +
+  #coord_flip() +
+  geom_text(aes(label = round(Value,2)), vjust = -0.2, size = 3) +
+  facet_wrap(~ Metrics)  + 
+  labs(x = "", y = "", title = "Test Results") +
+  theme(legend.position = 'none')
+```
+
+# Simplified Model ?
 
 ```{r}
 data_small4 <- data %>% 
@@ -1049,8 +1057,6 @@ data_small4 <- data %>%
                 difficulty_walking,
                 #difficulty_stairs,
                 cvd)
-
-colSums(is.na(data_small4))
 ```
 
 
@@ -1154,7 +1160,7 @@ data.frame(
 ```{r}
 model3m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
-                  fasting_glucose + difficulty_walking + difficulty_stairs + high_blood_pressure + religious_attendance, 
+                  fasting_glucose + difficulty_walking + high_blood_pressure + religious_attendance, 
                 data = train.data3m, family = "binomial")
 
 probabilities3m <- model3m_train %>% predict(test.data3m, type = "response")
