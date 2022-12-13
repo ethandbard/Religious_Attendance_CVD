@@ -804,7 +804,7 @@ probabilities1f <- model1f_train %>% predict(test.data1f, type = "response")
 test.data1f$prob = probabilities1f
 plot(roc(cvd ~ prob, data = test.data1f), main = "Model 1f")
 roc_obj1f <- roc(cvd ~ prob, data = test.data1f)
-possible_thresholds <- coords(roc_obj)
+possible_thresholds <- coords(roc_obj1f)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
   filter(balanced_accuracy == max(balanced_accuracy))
@@ -843,7 +843,7 @@ probabilities1m <- model1m_train %>% predict(test.data1m, type = "response")
 test.data1m$prob = probabilities1m
 plot(roc(cvd ~ prob, data = test.data1m), main = "Model 1m")
 roc_obj1m <- roc(cvd ~ prob, data = test.data1m)
-possible_thresholds <- coords(roc_obj)
+possible_thresholds <- coords(roc_obj1m)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
   filter(balanced_accuracy == max(balanced_accuracy))
@@ -882,7 +882,7 @@ probabilities2f <- model2f_train %>% predict(test.data2f, type = "response")
 test.data2f$prob = probabilities2f
 plot(roc(cvd ~ prob, data = test.data2f), main = "Model 2f")
 roc_obj2f <- roc(cvd ~ prob, data = test.data2f)
-possible_thresholds <- coords(roc_obj)
+possible_thresholds <- coords(roc_obj2f)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
   filter(balanced_accuracy == max(balanced_accuracy))
@@ -919,7 +919,7 @@ probabilities2m <- model2m_train %>% predict(test.data2m, type = "response")
 test.data2m$prob = probabilities2m
 plot(roc(cvd ~ prob, data = test.data2m), main = "Model 2m")
 roc_obj2m <- roc(cvd ~ prob, data = test.data2m)
-possible_thresholds <- coords(roc_obj)
+possible_thresholds <- coords(roc_obj2m)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
   filter(balanced_accuracy == max(balanced_accuracy))
@@ -956,7 +956,7 @@ probabilities3f <- model3f_train %>% predict(test.data3f, type = "response")
 test.data3f$prob = probabilities3f
 plot(roc(cvd ~ prob, data = test.data3f), main = "Model 3f")
 roc_obj3f <- roc(cvd ~ prob, data = test.data3f)
-possible_thresholds <- coords(roc_obj)
+possible_thresholds <- coords(roc_obj3f)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
   filter(balanced_accuracy == max(balanced_accuracy))
@@ -992,7 +992,7 @@ probabilities3m <- model3m_train %>% predict(test.data3m, type = "response")
 test.data3m$prob = probabilities3m
 plot(roc(cvd ~ prob, data = test.data3m), main = "Model 3m")
 roc_obj3m <- roc(cvd ~ prob, data = test.data3m)
-possible_thresholds <- coords(roc_obj)
+possible_thresholds <- coords(roc_obj3m)
 best_threshold <- possible_thresholds %>% 
   mutate(balanced_accuracy = (specificity + sensitivity) / 2) %>% 
   filter(balanced_accuracy == max(balanced_accuracy))
@@ -1020,13 +1020,12 @@ test_results3m <- confusionMatrix(conf.matrix, positive = "pos")
 #Test Results dataframe
 
 test_results <- data.frame(Metrics = c("Sensitivity", "Specificity", "F1", "Balanced Accuracy"),
-           Model1f = c(test_results1f$byClass[c(1,2,7,11)]),
-           Model1m = c(test_results1m$byClass[c(1,2,7,11)]),
-           Model2f = c(test_results2f$byClass[c(1,2,7,11)]),
-           Model2m = c(test_results2m$byClass[c(1,2,7,11)]),
-           Model3f = c(test_results3f$byClass[c(1,2,7,11)]),
-           Model3m = c(test_results3m$byClass[c(1,2,7,11)])) %>% 
-  pivot_longer(cols = starts_with("Model"), names_to = "Model", values_to = "Value")
+           Model1f = round(c(test_results1f$byClass[c(1,2,7,11)]),2),
+           Model1m = round(c(test_results1m$byClass[c(1,2,7,11)]),2),
+           Model2f = round(c(test_results2f$byClass[c(1,2,7,11)]),2),
+           Model2m = round(c(test_results2m$byClass[c(1,2,7,11)]),2),
+           Model3f = round(c(test_results3f$byClass[c(1,2,7,11)]),2),
+           Model3m = round(c(test_results3m$byClass[c(1,2,7,11)]),2)) 
 
 
 test_results %>% 
@@ -1034,6 +1033,7 @@ test_results %>%
   kable_paper()
 
 test_results %>% 
+  pivot_longer(cols = starts_with("Model"), names_to = "Model", values_to = "Value") %>% 
   ggplot(aes(x = Model, y = Value)) + 
   geom_bar(stat = "identity") +
   #coord_flip() +
