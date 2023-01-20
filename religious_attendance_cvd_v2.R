@@ -1,15 +1,8 @@
----
-title: "Religious Attendance and CVD"
-output: 
-  html_notebook: 
-    fig_width: 4
----
-
-```{r, include = FALSE}
+## ---- include = FALSE-----------------------------------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
-```
 
-```{r, warning = FALSE, message = TRUE}
+
+## ---- warning = FALSE, message = TRUE-------------------------------------------------------------------------------------------------------------------
 library(tidyverse)
 library(kableExtra)
 library(gtsummary)
@@ -17,30 +10,18 @@ library(foreign)
 library(knitr)
 library(blorr)
 library(vtable)
-#library(leaps)
-#library(gridExtra)
+library(leaps)
+library(gridExtra)
 library(MASS)
 library(caret)
-#library(poliscidata)
-#library(MuMIn)
+library(poliscidata)
+library(MuMIn)
 #library(flexmix)
 library(pROC)
-#library(modelsummary)
+library(modelsummary)
 
-citation()
-citation('tidyverse')
-citation('kableExtra')
-citation('gtsummary')
-citation('foreign')
-citation('knitr')
-citation('blorr')
-citation('vtable')
-citation('MASS')
-citation('caret')
-citation('pROC')
-```
 
-```{r import data and map variables}
+## ----import data and map variables----------------------------------------------------------------------------------------------------------------------
 #demo
 xpt <- foreign::read.xport("../Data/DEMO_E.XPT")
 
@@ -430,9 +411,9 @@ data_small3m <- data_small3 %>% filter(gender == "Male") %>% na.omit()
 
 #Create .csv file
 #write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
-```
 
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 library(vtable)
 data %>% 
   dplyr::select(gender, 
@@ -455,32 +436,30 @@ data %>%
          religious_attendance, 
          cvd) %>% 
   sumtable(out = "csv", file = "variables.csv")
-```
 
-```{r, eval = FALSE}
-data %>% 
- # select(num_healthcare_visits, gender, age, ethnicity, education, marital_status, poverty_level_category, health_insurance, Received_food_stamps, Worried_house_run_out_of_food, Food_ran_out ) %>% 
-  group_by(num_healthcare_visits) %>% 
-  summarise(N = n(),
-            White = scales::percent(length(ethnicity[ethnicity == "Non-Hispanic White"]) / n()),
-            Black = scales::percent(length(ethnicity[ethnicity == "Non-Hispanic Black"]) / n()),
-            Hispanic = scales::percent(length(ethnicity[ethnicity == "Hispanic"]) / n()),
-            Other = scales::percent(length(ethnicity[ethnicity == "Other"]) / n()),
-            Uneducated = scales::percent(length(education[education == "Less than High School"]) / n()),
-            Never_married = scales::percent(length(marital_status[marital_status == "Never Married"]) / n()),
-            Married = scales::percent(length(marital_status[marital_status == "Married"]) / n()),
-            Health_insurance = scales::percent(length(health_insurance[health_insurance == "Covered"]) / n()),
-            Receieved_food_stamps = scales::percent(length(ever_received_food_stamps[ever_received_food_stamps == "Yes"]) / n()),
-            Worried_food_ran_out = scales::percent(length(worried_house_run_out_food[worried_house_run_out_food == "Yes"]) / n()),
-            Food_ran_out = scales::percent(length(food_ran_out[food_ran_out == "Yes"]) / n())
-            ) %>% 
-  kable() %>% 
-  kable_paper()
-```
 
-# Heart attack and Stroke Prevalence
+## ---- eval = FALSE--------------------------------------------------------------------------------------------------------------------------------------
+## data %>%
+##  # select(num_healthcare_visits, gender, age, ethnicity, education, marital_status, poverty_level_category, health_insurance, Received_food_stamps, Worried_house_run_out_of_food, Food_ran_out ) %>%
+##   group_by(num_healthcare_visits) %>%
+##   summarise(N = n(),
+##             White = scales::percent(length(ethnicity[ethnicity == "Non-Hispanic White"]) / n()),
+##             Black = scales::percent(length(ethnicity[ethnicity == "Non-Hispanic Black"]) / n()),
+##             Hispanic = scales::percent(length(ethnicity[ethnicity == "Hispanic"]) / n()),
+##             Other = scales::percent(length(ethnicity[ethnicity == "Other"]) / n()),
+##             Uneducated = scales::percent(length(education[education == "Less than High School"]) / n()),
+##             Never_married = scales::percent(length(marital_status[marital_status == "Never Married"]) / n()),
+##             Married = scales::percent(length(marital_status[marital_status == "Married"]) / n()),
+##             Health_insurance = scales::percent(length(health_insurance[health_insurance == "Covered"]) / n()),
+##             Receieved_food_stamps = scales::percent(length(ever_received_food_stamps[ever_received_food_stamps == "Yes"]) / n()),
+##             Worried_food_ran_out = scales::percent(length(worried_house_run_out_food[worried_house_run_out_food == "Yes"]) / n()),
+##             Food_ran_out = scales::percent(length(food_ran_out[food_ran_out == "Yes"]) / n())
+##             ) %>%
+##   kable() %>%
+##   kable_paper()
 
-```{r heart attack and stroke table}
+
+## ----heart attack and stroke table----------------------------------------------------------------------------------------------------------------------
 as.data.frame(table(data$heart_attack, data$stroke)) %>% 
   rename('Heart Attack' = Var1,
          'Stroke' = Var2) %>% 
@@ -489,11 +468,9 @@ as.data.frame(table(data$heart_attack, data$stroke)) %>%
         align = c('l')) %>% 
   kable_paper() %>% 
   add_header_above(c(" " = 1, "Stroke" = 2))
-```
 
-# Number of healthcare visits per year by cardiovascular disease history
 
-```{r, warning=FALSE}
+## ---- warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------
 p1 <- as.data.frame(table(data$cvd, data$num_healthcare_visits)) %>% 
   mutate(Var1 = case_when(
     Var1 == 0 ~ "No",
@@ -526,11 +503,9 @@ p2 <- as.data.frame(table(data$cvd, data$num_healthcare_visits)) %>%
 
 p1 
 p2
-```
 
-## Cardiovascular Disease: Social, Health, and Religious Attendance Summaries
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 #Social determinants only
 model1f <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out,
                data = data_small1f, family = "binomial")
@@ -560,9 +535,9 @@ model3m <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + povert
                  #difficulty_stairs + 
                  high_blood_pressure + religious_attendance, 
                 data = data_small3m, family = "binomial")
-```
 
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 summary(model1f)
 summary(model1m)
 
@@ -571,11 +546,9 @@ summary(model2m)
 
 summary(model3f)
 summary(model3m)
-```
 
-## Chi Sq model significance
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 data.frame(
   Models = c("Model 1f", 
              "Model 1m", 
@@ -601,11 +574,9 @@ data.frame(
         model2m$n,
         model3f$n,
         model3m$n))
-```
 
-# Model Fit Statistics
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 blr_model_fit_stats(model1f)
 blr_model_fit_stats(model1m)
 blr_model_fit_stats(model2f)
@@ -619,11 +590,9 @@ blr_multi_model_fit_stats(model1f,
                           model2m, 
                           model3f,
                           model3m)
-```
 
-## Odds ratios and p-value
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 model1f_tbl <- tbl_regression(model1f, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
@@ -696,10 +665,9 @@ tbl_merge(tbls = list(model1f_tbl,
                           "Model 2m", 
                           "Model 3f",
                           "Model 3m"))
-```
 
-## Model ethnicity breakdowns
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 # Ethnicity Distributions
 
 #model1f
@@ -749,11 +717,9 @@ data_small3m %>%
   theme_minimal() +
   labs(x = "", y = "", title = "Model 3m Participants' Ethnicity Distribution") +
   geom_text(aes(label = scales::percent(..count.. / sum(..count..))), stat = "count", vjust = -0.5)
-```
 
-## model classification confusion matrix
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 set.seed(304)
 
 #make train and test sets
@@ -804,9 +770,9 @@ training.samples <- data_small3m$cvd %>%
   createDataPartition(p = .75, list = FALSE)
 train.data3m <- data_small3m[training.samples, ]
 test.data3m <- data_small3m[-training.samples, ]
-```
 
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 model1f_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
                 data = train.data1f, family = "binomial")
 
@@ -844,9 +810,9 @@ conf.matrix <- table(predicted.classes1f, test.data1f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
 test_results1f <- confusionMatrix(conf.matrix, positive = "pos")
-```
 
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 model1m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out, 
                 data = train.data1m, family = "binomial")
 
@@ -879,10 +845,9 @@ conf.matrix <- table(predicted.classes1m, test.data1m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
 test_results1m <- confusionMatrix(conf.matrix, positive = "pos")
-```
 
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 model2f_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + difficulty_walking 
@@ -918,9 +883,9 @@ conf.matrix <- table(predicted.classes2f, test.data2f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 
 test_results2f <- confusionMatrix(conf.matrix, positive = "pos")
-```
 
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 model2m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + difficulty_walking + high_blood_pressure, 
@@ -954,10 +919,9 @@ as.data.frame(table(predicted.classes2m, test.data2m$cvd)) %>%
 conf.matrix <- table(predicted.classes2m, test.data2m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 test_results2m <- confusionMatrix(conf.matrix, positive = "pos")
-```
 
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 model3f_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + difficulty_walking + high_blood_pressure + religious_attendance, 
@@ -991,9 +955,9 @@ as.data.frame(table(predicted.classes3f, test.data3f$cvd)) %>%
 conf.matrix <- table(predicted.classes3f, test.data3f$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 test_results3f <- confusionMatrix(conf.matrix, positive = "pos")
-```
 
-```{r, warning = FALSE, message= FALSE}
+
+## ---- warning = FALSE, message= FALSE-------------------------------------------------------------------------------------------------------------------
 model3m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + difficulty_walking + high_blood_pressure + religious_attendance, 
@@ -1027,9 +991,9 @@ as.data.frame(table(predicted.classes3m, test.data3m$cvd)) %>%
 conf.matrix <- table(predicted.classes3m, test.data3m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 test_results3m <- confusionMatrix(conf.matrix, positive = "pos")
-```
 
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 #Test Results dataframe
 
 test_results <- data.frame(Metrics = c("Sensitivity", "Specificity", "F1", "Balanced Accuracy"),
@@ -1054,9 +1018,25 @@ test_results %>%
   facet_wrap(~ Metrics)  + 
   labs(x = "", y = "", title = "Test Results") +
   theme(legend.position = 'none')
-```
 
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
+data_small4 <- data %>% 
+  dplyr::select(age,
+                gender,
+                rfm,
+                ethnicity,
+                education,
+                food_ran_out,
+                fasting_glucose,
+                difficulty_walking,
+                #difficulty_stairs,
+                cvd)
+
+
+
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 data.frame(
   Models = c("Model 1f", 
              "Model 1m", 
@@ -1082,11 +1062,9 @@ data.frame(
         model2m$n,
         model3f$n,
         model3m$n))
-```
 
 
-
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------------
 model3m_train <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + poverty_level_category + health_insurance + num_healthcare_visits + worried_house_run_out_food + food_ran_out + tobacco_use + 
                   alcohol_consumption +
                   fasting_glucose + difficulty_walking + high_blood_pressure + religious_attendance, 
@@ -1121,5 +1099,4 @@ as.data.frame(table(predicted.classes3m, test.data3m$cvd)) %>%
 conf.matrix <- table(predicted.classes3m, test.data3m$cvd)
 dimnames(conf.matrix)[[2]] <- c("neg", "pos")
 confusionMatrix(conf.matrix, positive = "pos")
-```
 
