@@ -17,15 +17,27 @@ library(foreign)
 library(knitr)
 library(blorr)
 library(vtable)
-library(leaps)
-library(gridExtra)
+#library(leaps)
+#library(gridExtra)
 library(MASS)
 library(caret)
-library(poliscidata)
-library(MuMIn)
-library(flexmix)
+#library(poliscidata)
+#library(MuMIn)
+#library(flexmix)
 library(pROC)
-library(modelsummary)
+#library(modelsummary)
+
+citation()
+citation('tidyverse')
+citation('kableExtra')
+citation('gtsummary')
+citation('foreign')
+citation('knitr')
+citation('blorr')
+citation('vtable')
+citation('MASS')
+citation('caret')
+citation('pROC')
 ```
 
 ```{r import data and map variables}
@@ -138,34 +150,6 @@ data <- merge(data, xpt[c("SEQN", "LBDGLUSI")], by = "SEQN", all.x = TRUE) %>%
 #    TRUE ~ as.double(0)
 #  ))
 
-#ALQ
-xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
-
-data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ140Q", "ALQ140U", "ALQ110")], by = "SEQN", all.x = TRUE) %>% 
-  mutate(had_12_drinks_in_1yr = ALQ101,
-         avg_drinks_daily_past_yr = ALQ130,
-         num_drinks_past_yr = ALQ120Q,
-         num_drinks_past_yr_unit = ALQ120U,
-         num_days_5_drinks_or_more = ALQ140Q,
-         had_12_drinks_lifetime = ALQ110)
-
-#ALCOHOL CONSUMPTION
-data <- data %>% 
-  mutate(alcohol_consumption = case_when(
-    ALQ101 == 2 & ALQ110 == 2  ~ "Never",
-    (ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365) ~ "Current Drinker",
-    ALQ110 == 1  & ALQ120Q == 0 ~ "Past drinker",
-    is.na(ALQ101) ~ "Not Asked",
-    is.na(ALQ120Q) ~ "Not Asked",
-    is.na(ALQ130) ~ "Not Asked",
-    ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "NA",
-    TRUE ~ as.character("Not Asked")
-  )) %>% 
-  mutate(alcohol_consumption = factor(alcohol_consumption, levels = c("Never", "Current Drinker", "past drinker", "Not Asked")))
-
-data <- data %>% 
-  filter(alcohol_consumption != "NA")
-
 #SSQ
 xpt <- foreign::read.xport("../Data/SSQ_E.xpt")
 
@@ -260,7 +244,7 @@ data$food_ran_out <- factor(data$food_ran_out, c(3, 1,2), c("Never true","Often 
 #data$mobility_limit <- factor(data$mobility_limit, c(1,2), c("Yes", "No"))
 data$high_blood_pressure <- factor(data$high_blood_pressure, c(2,1), c("No", "Yes"))
 
-data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
+#data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
 
 data$heart_attack_num <- data$heart_attack
 data$stroke_num <- data$stroke
@@ -306,117 +290,93 @@ data <- data %>%
 #data <- data %>% 
 #  mutate(rfm = factor(rfm))
 
-data <- data %>% 
-  mutate(weekly_drinking = case_when(
-          num_drinks_past_yr_unit == 1 ~ num_drinks_past_yr,
-          num_drinks_past_yr_unit == 2 ~ num_drinks_past_yr / 4.25,
-          num_drinks_past_yr_unit == 3 ~ num_drinks_past_yr / 52,
-          num_drinks_past_yr == 0 ~ 0),
-         type_of_drinker = case_when(
-          age >= 65 & weekly_drinking > 7 ~ "Harmful",
-          age >= 65 & weekly_drinking <=7 & weekly_drinking > 0 ~ "Moderate",
-          age < 65 & gender == "Female" & weekly_drinking > 0.0 & weekly_drinking <= 7.0 ~ "Moderate",
-          age < 65 & gender == "Female" & weekly_drinking > 0.0 & weekly_drinking > 7.0 ~ "Harmful",
-          age < 65 & gender == "Male" & weekly_drinking > 0.0 & weekly_drinking <= 14.0 ~ "Moderate",
-          age < 65 & gender == "Male" & weekly_drinking > 0.0 & weekly_drinking > 14.0 ~ "Harmful",
-          weekly_drinking == 0.000000000 ~ "Abstainer"
-         )
-    )
+#data <- data %>% 
+#  mutate(weekly_drinking = case_when(
+#          num_drinks_past_yr_unit == 1 ~ num_drinks_past_yr,
+#          num_drinks_past_yr_unit == 2 ~ num_drinks_past_yr / 4.25,
+#          num_drinks_past_yr_unit == 3 ~ num_drinks_past_yr / 52,
+#          num_drinks_past_yr == 0 ~ 0),
+#         type_of_drinker = case_when(
+#          age >= 65 & weekly_drinking > 7 ~ "Harmful",
+#          age >= 65 & weekly_drinking <=7 & weekly_drinking > 0 ~ "Moderate",
+#          age < 65 & gender == "Female" & weekly_drinking > 0.0 & weekly_drinking <= 7.0 ~ "Moderate",
+#          age < 65 & gender == "Female" & weekly_drinking > 0.0 & weekly_drinking > 7.0 ~ "Harmful",
+#          age < 65 & gender == "Male" & weekly_drinking > 0.0 & weekly_drinking <= 14.0 ~ "Moderate",
+#          age < 65 & gender == "Male" & weekly_drinking > 0.0 & weekly_drinking > 14.0 ~ "Harmful",
+#          weekly_drinking == 0.000000000 ~ "Abstainer"
+#         )
+#    )
 
-data$type_of_drinker <- factor(data$type_of_drinker, c("Abstainer", "Harmful", "Moderate"), c("Abstainer", "Harmful", "Moderate"))
+#data$type_of_drinker <- factor(data$type_of_drinker, c("Abstainer", "Harmful", "Moderate"), c("Abstainer", "Harmful", #"Moderate"))
 
 data <- data %>% 
   mutate(cvd = case_when(
     heart_attack == "Yes" | stroke == "Yes" ~ 1,
     TRUE ~ as.numeric(0)
   ))
+```
 
 
+```{r}
+#ALQ
+xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
+xpt$ALQ_missing_values <- rowSums(is.na(xpt))
+xpt %>% 
+  filter(ALQ_missing_values == 8)
+
+xpt %>% 
+  mutate(ALQ = case_when(
+    ALQ101 == 2 & ALQ110 == 2  ~ "Never",
+    ALQ101 == 1  & ALQ120Q == 0 ~ "Past drinker",
+    ALQ101 == 1 & ((ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365)) ~ "Current Drinker",
+    #ALQ_missing_values == 8 ~ "Not Asked",
+    TRUE ~ as.character("Not Asked"))) %>% 
+  dplyr::select(starts_with("ALQ")) %>% 
+  filter(ALQ == "Not Asked", ALQ_missing_values < 8) %>% 
+  arrange(-ALQ120Q)
+```
 
 
+```{r}
+#ALCOHOL CONSUMPTION
+data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ140Q", "ALQ140U", "ALQ110")], by = "SEQN", all.x = TRUE) %>% 
+  mutate(had_12_drinks_in_1yr = ALQ101,
+         avg_drinks_daily_past_yr = ALQ130,
+         num_drinks_past_yr = ALQ120Q,
+         num_drinks_past_yr_unit = ALQ120U,
+         num_days_5_drinks_or_more = ALQ140Q,
+         had_12_drinks_lifetime = ALQ110)
 
 data <- data %>% 
+  mutate(alcohol_consumption = case_when(
+    ALQ101 == 2 & ALQ110 == 2  ~ "Never",
+    ALQ101 == 1  & ALQ120Q == 0 ~ "Past drinker",
+    ALQ101 == 1 & ((ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365)) ~ "Current Drinker",
+   # ALQ_missing_values == 8 ~ "Not Asked"
+    #is.na(ALQ101) ~ "Not Asked",
+    #is.na(ALQ120Q) ~ "Not Asked",
+    #is.na(ALQ130) ~ "Not Asked",
+    #ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "Not Asked",
+    TRUE ~ as.character("Not Asked")
+  )) %>% 
+ # mutate(alcohol_consumption = factor(alcohol_consumption, levels = c("Never", "Current Drinker", "Past drinker", "Not Asked")))
+  mutate(alcohol_consumption = factor(alcohol_consumption, levels = c("Never", "Current Drinker", "Past drinker", "Not Asked")))
+
+data %>% 
+  dplyr::select(ALQ101, ALQ110, ALQ120Q, ALQ130, ALQ140Q, alcohol_consumption) %>% 
+  filter(alcohol_consumption == "Not Asked")
+
+data %>% 
+  dplyr::select(alcohol_consumption) %>% 
+  summary()
+
+#data <- data %>% 
+#  filter(alcohol_consumption != "NA")
+```
+
+```{r}
+data <- data %>% 
   filter(age >= 40)
-
-
-#Center and Scale data
-data$age <- scale(data$age)
-data$rfm <- scale(data$rfm)
-data$fasting_glucose <- scale(data$fasting_glucose)
-
-
-#Smaller dataset with no missing values
-
-#model 1
-data_small1 <- data %>% 
-  dplyr::select(gender, 
-         age, 
-         rfm, 
-         ethnicity, 
-         education, 
-         marital_status, 
-         poverty_level_category, 
-         health_insurance, 
-         num_healthcare_visits, 
-         worried_house_run_out_food, 
-         food_ran_out, 
-         cvd)
-
-#model 2
-data_small2 <-   data %>% 
-  dplyr::select(gender, 
-         age, 
-         rfm, 
-         ethnicity, 
-         education, 
-         marital_status, 
-         poverty_level_category, 
-         health_insurance, 
-         num_healthcare_visits, 
-         worried_house_run_out_food, 
-         food_ran_out, 
-         tobacco_use,
-         alcohol_consumption, 
-         fasting_glucose, 
-         difficulty_walking,
-        # difficulty_stairs,
-         high_blood_pressure, 
-         cvd)
-
-#model 3
-data_small3 <- data %>% 
-  dplyr::select(gender, 
-         age, 
-         rfm, 
-         ethnicity, 
-         education, 
-         marital_status, 
-         poverty_level_category, 
-         health_insurance, 
-         num_healthcare_visits, 
-         worried_house_run_out_food, 
-         food_ran_out, 
-         tobacco_use,
-         alcohol_consumption, 
-         fasting_glucose, 
-         difficulty_walking,
-       #  difficulty_stairs, 
-         high_blood_pressure, 
-         religious_attendance, 
-         cvd)
-
-data_small1f <- data_small1 %>% filter(gender == "Female") %>% na.omit()
-data_small1m <- data_small1 %>% filter(gender == "Male") %>% na.omit()
-data_small2f <- data_small2 %>% filter(gender == "Female")  %>% na.omit()
-data_small2m <- data_small2 %>% filter(gender == "Male")  %>% na.omit()
-data_small3f <- data_small3 %>% filter(gender == "Female")  %>% na.omit()
-data_small3m <- data_small3 %>% filter(gender == "Male") %>% na.omit()
-
-#Create .SAS file
-#write.foreign(df=data, datafile="../Data/nhanes0708.csv", codefile="../Data/nhanes0708.sas", package="SAS")
-
-#Create .csv file
-#write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
 ```
 
 ```{r}
@@ -443,6 +403,90 @@ data %>%
          cvd) %>% 
   sumtable(out = "csv", file = "variables.csv")
 ```
+
+
+```{r}
+#Center and Scale data
+data$age <- scale(data$age)
+data$rfm <- scale(data$rfm)
+data$fasting_glucose <- scale(data$fasting_glucose)
+
+
+#Smaller dataset with no missing values
+
+#model 1
+data_small1 <- data %>% 
+  dplyr::select(gender, 
+         age, 
+         rfm, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         poverty_level_category, 
+         health_insurance, 
+         num_healthcare_visits, 
+         worried_house_run_out_food, 
+         food_ran_out, 
+         cvd) %>% na.omit()
+
+#model 2
+data_small2 <-   data %>% 
+  dplyr::select(gender, 
+         age, 
+         rfm, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         poverty_level_category, 
+         health_insurance, 
+         num_healthcare_visits, 
+         worried_house_run_out_food, 
+         food_ran_out, 
+         tobacco_use,
+         alcohol_consumption, 
+         fasting_glucose, 
+         difficulty_walking,
+        # difficulty_stairs,
+         high_blood_pressure, 
+         cvd) %>% na.omit()
+
+#model 3
+data_small3 <- data %>% 
+  dplyr::select(gender, 
+         age, 
+         rfm, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         poverty_level_category, 
+         health_insurance, 
+         num_healthcare_visits, 
+         worried_house_run_out_food, 
+         food_ran_out, 
+         tobacco_use,
+         alcohol_consumption, 
+         fasting_glucose, 
+         difficulty_walking,
+       #  difficulty_stairs, 
+         high_blood_pressure, 
+         religious_attendance, 
+         cvd) %>% na.omit()
+
+data_small1f <- data_small1 %>% filter(gender == "Female") #%>% na.omit()
+data_small1m <- data_small1 %>% filter(gender == "Male") #%>% na.omit()
+data_small2f <- data_small2 %>% filter(gender == "Female")  #%>% na.omit()
+data_small2m <- data_small2 %>% filter(gender == "Male")  #%>% na.omit()
+data_small3f <- data_small3 %>% filter(gender == "Female")  #%>% na.omit()
+data_small3m <- data_small3 %>% filter(gender == "Male") #%>% na.omit()
+
+#Create .SAS file
+#write.foreign(df=data, datafile="../Data/nhanes0708.csv", codefile="../Data/nhanes0708.sas", package="SAS")
+
+#Create .csv file
+#write.csv(data, "../Data/nhanes0708.csv", col.names = TRUE) 
+```
+
+
 
 ```{r, eval = FALSE}
 data %>% 
@@ -565,30 +609,29 @@ summary(model3m)
 ```{r}
 data.frame(
   Models = c("Model 1f", 
-             "Model 1m", 
              "Model 2f", 
-             "Model 2m", 
-             "Model 3f",
-             "Model 3m"),
+             "Model 3f"),
   ChiSq_significance = c(with(model1f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-                         with(model1m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
                          with(model2f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-                         with(model2m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-                         with(model3f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-                         with(model3m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))),
+                         with(model3f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))),
   BIC = c(BIC(model1f),
-          BIC(model1m),
           BIC(model2f),
-          BIC(model2m),
-          BIC(model3f),
-          BIC(model3m)),
-  N = c(model1f$n,
-        model1m$n,
-        model2f$n,
-        model2m$n,
-        model3f$n,
-        model3m$n))
+          BIC(model3f)))
 ```
+
+```{r}
+data.frame(
+  Models = c("Model 1m", 
+             "Model 2m", 
+             "Model 3m"),
+  ChiSq_significance = c(with(model1m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model2m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+                         with(model3m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))),
+  BIC = c(BIC(model1m),
+          BIC(model2m),
+          BIC(model3m)))
+```
+
 
 # Model Fit Statistics
 
@@ -599,14 +642,21 @@ blr_model_fit_stats(model2f)
 blr_model_fit_stats(model2m)
 blr_model_fit_stats(model3f)
 blr_model_fit_stats(model3m)
+```
 
-blr_multi_model_fit_stats(model1f, 
-                          model1m, 
+```{r}
+blr_multi_model_fit_stats(model1f,
                           model2f, 
+                          model3f)
+```
+
+```{r}
+blr_multi_model_fit_stats(model1m, 
                           model2m, 
-                          model3f,
                           model3m)
 ```
+
+
 
 ## Odds ratios and p-value
 
@@ -617,7 +667,6 @@ model1f_tbl <- tbl_regression(model1f, exponentiate = TRUE) %>%
     rows = reference_row %in% TRUE,
     missing_symbol = "Ref."
   ) %>% 
-  modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)  
 
@@ -627,7 +676,6 @@ model1m_tbl <- tbl_regression(model1m, exponentiate = TRUE) %>%
     rows = reference_row %in% TRUE,
     missing_symbol = "Ref."
   ) %>% 
-  modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05) 
 
@@ -637,7 +685,6 @@ model2f_tbl <- tbl_regression(model2f, exponentiate = TRUE) %>%
     rows = reference_row %in% TRUE,
     missing_symbol = "Ref."
   ) %>% 
-  modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
 
@@ -647,7 +694,6 @@ model2m_tbl <- tbl_regression(model2m, exponentiate = TRUE) %>%
     rows = reference_row %in% TRUE,
     missing_symbol = "Ref."
   ) %>% 
-  modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
 
@@ -657,7 +703,6 @@ model3f_tbl <- tbl_regression(model3f, exponentiate = TRUE) %>%
     rows = reference_row %in% TRUE,
     missing_symbol = "Ref."
   ) %>% 
-  modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
 
@@ -667,23 +712,29 @@ model3m_tbl <- tbl_regression(model3m, exponentiate = TRUE) %>%
     rows = reference_row %in% TRUE,
     missing_symbol = "Ref."
   ) %>% 
-  modify_column_hide(column = ci) %>% 
   bold_labels() %>% 
   bold_p(t = 0.05)
+```
 
+```{r}
 tbl_merge(tbls = list(model1f_tbl, 
-                      model1m_tbl, 
                       model2f_tbl, 
-                      model2m_tbl, 
-                      model3f_tbl,
-                      model3m_tbl),
+                      model3f_tbl),
           tab_spanner = c("Model 1f", 
-                          "Model 1m", 
                           "Model 2f", 
+                          "Model 3f"))
+```
+
+```{r}
+tbl_merge(tbls = list(model1m_tbl, 
+                      model2m_tbl, 
+                      model3m_tbl),
+          tab_spanner = c("Model 1m", 
                           "Model 2m", 
-                          "Model 3f",
                           "Model 3m"))
 ```
+
+
 
 ## Model ethnicity breakdowns
 ```{r}
@@ -1021,11 +1072,8 @@ test_results3m <- confusionMatrix(conf.matrix, positive = "pos")
 
 test_results <- data.frame(Metrics = c("Sensitivity", "Specificity", "F1", "Balanced Accuracy"),
            Model1f = round(c(test_results1f$byClass[c(1,2,7,11)]),2),
-           Model1m = round(c(test_results1m$byClass[c(1,2,7,11)]),2),
            Model2f = round(c(test_results2f$byClass[c(1,2,7,11)]),2),
-           Model2m = round(c(test_results2m$byClass[c(1,2,7,11)]),2),
-           Model3f = round(c(test_results3f$byClass[c(1,2,7,11)]),2),
-           Model3m = round(c(test_results3m$byClass[c(1,2,7,11)]),2)) 
+           Model3f = round(c(test_results3f$byClass[c(1,2,7,11)]),2)) 
 
 
 test_results %>% 
@@ -1043,87 +1091,28 @@ test_results %>%
   theme(legend.position = 'none')
 ```
 
-# Simplified Model ?
-
 ```{r}
-data_small4 <- data %>% 
-  dplyr::select(age,
-                gender,
-                rfm,
-                ethnicity,
-                education,
-                food_ran_out,
-                fasting_glucose,
-                difficulty_walking,
-                #difficulty_stairs,
-                cvd)
-```
+#Test Results dataframe
+
+test_results <- data.frame(Metrics = c("Sensitivity", "Specificity", "F1", "Balanced Accuracy"),
+           Model1m = round(c(test_results1m$byClass[c(1,2,7,11)]),2),
+           Model2m = round(c(test_results2m$byClass[c(1,2,7,11)]),2),
+           Model3m = round(c(test_results3m$byClass[c(1,2,7,11)]),2)) 
 
 
-```{r, eval = false}
-data_small4 <- data %>% 
-  dplyr::select(age,
-                gender,
-                rfm,
-                ethnicity,
-                education,
-                food_ran_out,
-                fasting_glucose,
-                difficulty_walking,
-                #difficulty_stairs,
-                cvd) %>% 
-  na.omit()
+test_results %>% 
+  kable() %>% 
+  kable_paper()
 
-data_small4f <- data_small4 %>% 
-  filter(gender == "Female")
-
-data_small4m <- data_small4 %>% 
-  filter(gender == "Male")
-
-model4f <- glm(cvd ~ age + ethnicity + education  + food_ran_out + fasting_glucose + difficulty_walking,
-               data = data_small4f, family = "binomial")
-
-model4m <- glm(cvd ~ age + ethnicity + education + food_ran_out + fasting_glucose + difficulty_walking,
-               data = data_small4m, family = "binomial")
-
-summary(model4f)
-summary(model4m)
-
-data.frame(
-  Models = c("Model 4f", 
-             "Model 4m"),
-  ChiSq_significance = c(with(model4f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-                         with(model4m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))),
-  BIC = c(BIC(model4f),
-          BIC(model4m)))
-
-blr_multi_model_fit_stats(model4f, 
-                          model4m)
-
-model4f_tbl <- tbl_regression(model4f, exponentiate = TRUE) %>% 
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>% 
-  modify_column_hide(column = ci) %>% 
-  bold_labels() %>% 
-  bold_p(t = 0.05)
-
-model4m_tbl <- tbl_regression(model4m, exponentiate = TRUE) %>% 
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>% 
-  modify_column_hide(column = ci) %>% 
-  bold_labels() %>% 
-  bold_p(t = 0.05)
-
-tbl_merge(tbls = list(model4f_tbl, 
-                      model4m_tbl),
-          tab_spanner = c("Model 4f", 
-                          "Model 4m"))
+test_results %>% 
+  pivot_longer(cols = starts_with("Model"), names_to = "Model", values_to = "Value") %>% 
+  ggplot(aes(x = Model, y = Value)) + 
+  geom_bar(stat = "identity") +
+  #coord_flip() +
+  geom_text(aes(label = round(Value,2)), vjust = -0.2, size = 3) +
+  facet_wrap(~ Metrics)  + 
+  labs(x = "", y = "", title = "Test Results") +
+  theme(legend.position = 'none')
 ```
 
 
@@ -1146,13 +1135,7 @@ data.frame(
           BIC(model2f),
           BIC(model2m),
           BIC(model3f),
-          BIC(model3m)),
-  N = c(model1f$n,
-        model1m$n,
-        model2f$n,
-        model2m$n,
-        model3f$n,
-        model3m$n))
+          BIC(model3m)))
 ```
 
 
