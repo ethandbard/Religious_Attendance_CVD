@@ -350,8 +350,10 @@ data <- data %>%
     heart_attack == "Yes" | stroke == "Yes" ~ 1,
     TRUE ~ as.numeric(0)
   ))
+```
 
 
+```{r import data and map variables}
 #filter age 40 and up
 data <- data %>% 
   filter(age >= 40)
@@ -359,10 +361,30 @@ data <- data %>%
 #Center and Scale data
 data$age <- scale(data$age)
 data$rfm <- scale(data$rfm)
-data$fasting_glucose <- scale(data$fasting_glucose)
+data$fasting_glucose <- scale(data$fasting_glucose) 
 
 
 #Smaller datasets in preparation for modeling
+
+data <- data %>% 
+  dplyr::select(gender, 
+         age, 
+         rfm, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         poverty_level_category, 
+         health_insurance, 
+         num_healthcare_visits, 
+         worried_house_run_out_food, 
+         food_ran_out, 
+         tobacco_use,
+         alcohol_consumption, 
+         fasting_glucose, 
+         difficulty_walking,
+         high_blood_pressure, 
+         religious_attendance, 
+         cvd)
 
 #model 1
 data_small1 <- data %>% 
@@ -427,6 +449,11 @@ data_small2f <- data_small2 %>% filter(gender == "Female")  %>% na.omit()
 data_small2m <- data_small2 %>% filter(gender == "Male")  %>% na.omit()
 data_small3f <- data_small3 %>% filter(gender == "Female")  %>% na.omit()
 data_small3m <- data_small3 %>% filter(gender == "Male") %>% na.omit()
+
+data_small1 <- data_small1 %>% na.omit()
+data_small2 <- data_small2 %>% na.omit()
+data_small3 <- data_small3 %>% na.omit()
+
 
 #Create .SAS file
 #write.foreign(df=data, datafile="../Data/nhanes0708.csv", codefile="../Data/nhanes0708.sas", package="SAS")
@@ -565,6 +592,13 @@ model3m <- glm(cvd ~ age + rfm + ethnicity + education + marital_status + povert
                  high_blood_pressure + religious_attendance, 
                 data = data_small3m, family = "binomial")
 ```
+
+```{r}
+model <- glm(cvd ~ gender + ethnicity, data = data_small3, family = "binomial")
+summary(model)
+blr_model_fit_stats(model)
+```
+
 
 ```{r}
 #model summaries
