@@ -350,10 +350,7 @@ data <- data %>%
     heart_attack == "Yes" | stroke == "Yes" ~ 1,
     TRUE ~ as.numeric(0)
   ))
-```
 
-
-```{r import data and map variables}
 #filter age 40 and up
 data <- data %>% 
   filter(age >= 40)
@@ -510,7 +507,7 @@ data %>%
 
 # Heart attack and Stroke Prevalence
 
-```{r heart attack and stroke table}
+```{r heart attack and stroke table, eval= FALSE}
 #heart attack and stroke table
 as.data.frame(table(data$heart_attack, data$stroke)) %>% 
   rename('Heart Attack' = Var1,
