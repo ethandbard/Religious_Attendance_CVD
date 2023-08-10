@@ -1,0 +1,13 @@
+﻿$(document).ready(function() {
+	preventDisabledHover();
+	//webstart();
+});
+
+//function webstart() {
+//	var cdcLeftNav = new CDC.LeftNav("nav-primary", "", true, true, true);
+//	cdcLeftNav.render();
+//}
+
+function preventDisabledHover() {
+	$("li > a.disabled").off("hover", "**");
+}

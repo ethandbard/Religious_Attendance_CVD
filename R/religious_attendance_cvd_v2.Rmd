@@ -30,7 +30,7 @@ library(pROC)
 library(modelsummary)
 ```
 
-```{r import data and map variables}
+```{r import data}
 #demographics
 #DEMO
 xpt <- foreign::read.xport("../Data/DEMO_E.XPT")
@@ -148,7 +148,10 @@ data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ
          num_drinks_past_yr_unit = ALQ120U,
          num_days_5_drinks_or_more = ALQ140Q,
          had_12_drinks_lifetime = ALQ110)
+```
 
+
+```{r map variables}
 #ALCOHOL CONSUMPTION factor levels
 data <- data %>% 
   mutate(alcohol_consumption = case_when(
@@ -354,7 +357,10 @@ data <- data %>%
 #filter age 40 and up
 data <- data %>% 
   filter(age >= 40)
+```
 
+
+```{r create new datasets}
 #Center and Scale data
 data$age <- scale(data$age)
 data$rfm <- scale(data$rfm)
