@@ -388,6 +388,8 @@ data <- data %>%
   filter(age >= 40)
 ```
 
+# Variables
+
 ```{r}
 #Variable Frequency table
 data %>% 
