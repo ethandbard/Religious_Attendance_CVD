@@ -1,0 +1,431 @@
+---
+title: "Religious Attendance and CVD"
+output: 
+  html_notebook: 
+    fig_width: 4
+---
+
+```{r, include = FALSE}
+#notebook settings - no messages or warnings in chunk output
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r, warning = FALSE, message = TRUE}
+#import libraries
+library(tidyverse)
+library(kableExtra)
+library(gtsummary)
+library(foreign)
+library(knitr)
+library(blorr)
+library(vtable)
+library(leaps)
+library(gridExtra)
+library(MASS)
+library(caret)
+library(poliscidata)
+library(MuMIn)
+library(flexmix)
+library(pROC)
+library(modelsummary)
+```
+
+```{r import data}
+#demographics
+#DEMO
+xpt <- foreign::read.xport("../Data/DEMO_E.XPT")
+
+#capture demographics and rename into data
+data <- xpt[c("SEQN", "RIAGENDR", "RIDAGEYR", "RIDRETH1", "DMDEDUC2", "DMDMARTL", "DMDBORN2")] %>% 
+  rename(gender = RIAGENDR,
+         age = RIDAGEYR,
+         ethnicity = RIDRETH1,
+         education = DMDEDUC2,
+         marital_status = DMDMARTL,
+         born_outside_us = DMDBORN2)
+
+#SMQ
+#TOBACCO
+xpt <- foreign::read.xport("../Data/SMQRTU_E.xpt")
+data <- merge(data, xpt[c("SEQN","SMQ680")], by = "SEQN", all.x = TRUE) %>% 
+  rename(tobacco_5_days = SMQ680)
+
+data <- data %>% 
+  mutate(tobacco_5_days = factor(tobacco_5_days))
+
+# xpt <- foreign::read.xport("../Data/SMQ_E.xpt")
+# data <- merge(data, xpt[c("SEQN","SMQ020", "SMQ040")], by = "SEQN", all.x = TRUE)
+#data <- data %>% 
+#  mutate(tobacco_use = case_when(
+  #   SMQ020 == 2  ~ "Never",
+  #   SMQ040 %in% c(1,2) ~ "Current",
+  #   SMQ040 == 3 ~ "Former",
+  #   TRUE ~ as.character("Not asked")
+  # ))
+
+#set factor levels for tobacco
+# data <- data %>% 
+#   mutate(tobacco_use = factor(tobacco_use, levels = c("Never", "Current", "Former")))
+
+#WHQ
+xpt <- foreign::read.xport("../Data/WHQ_E.xpt")
+data <- merge(data, xpt[c("SEQN","WHD010", "WHD020")], by = "SEQN", all.x = TRUE)
+
+#DPQ
+#depression
+xpt <- foreign::read.xport("../Data/DPQ_E.xpt")
+data <- merge(data, xpt[c("SEQN","DPQ010", "DPQ020", "DPQ030","DPQ040", 
+                          "DPQ050", "DPQ060", "DPQ070", "DPQ080", "DPQ090"
+                          )], by = "SEQN", all.x = TRUE)
+
+#set to factor for vtable
+data <- data %>% 
+  mutate(
+    DPQ010 = factor(DPQ010),
+    DPQ020 = factor(DPQ020),
+    DPQ030 = factor(DPQ030),
+    DPQ040 = factor(DPQ040),
+    DPQ050 = factor(DPQ050),
+    DPQ060 = factor(DPQ060),
+    DPQ070 = factor(DPQ070),
+    DPQ080 = factor(DPQ080),
+    DPQ090 = factor(DPQ090)
+  )
+
+#HOQ
+#home owned, bought, rented, other
+xpt <- foreign::read.xport("../Data/HOQ_E.xpt")
+data <- merge(data, xpt[c("SEQN","HOQ065")], by = "SEQN", all.x = TRUE) %>% 
+  rename(home = HOQ065)
+
+#home factor
+data <- data %>% 
+  mutate(home = factor(home))
+
+
+#INQ
+#poverty level
+xpt <- foreign::read.xport("../Data/INQ_E.xpt")
+data <- merge(data, xpt[c("SEQN", "INDFMMPI", "INDFMMPC")], by = "SEQN", all.x = TRUE) %>% 
+  rename(poverty_level_index = INDFMMPI,
+         poverty_level_category = INDFMMPC)
+
+#HIQ
+#health insurance
+xpt <- foreign::read.xport("../Data/HIQ_E.xpt")
+data <- merge(data, xpt[c("SEQN", "HIQ011", "HIQ031A", "HIQ031B", "HIQ031D")], by = "SEQN", all.x = TRUE) %>% 
+  rename(health_insurance = HIQ011,
+         private_insurance = HIQ031A,
+         medicare = HIQ031B,
+         medicaid = HIQ031D)
+
+#HUQ
+#number of healthcare visits
+xpt <- foreign::read.xport("../Data/HUQ_E.xpt")
+data <- merge(data, xpt[c("SEQN", "HUQ050", "HUQ030")], by = "SEQN", all.x = TRUE) %>% 
+  rename(num_healthcare_visits = HUQ050,
+         health_care_access = HUQ030) %>% 
+  mutate(num_healthcare_visits = case_when(
+    num_healthcare_visits %in% c(0,1) ~ "1",
+    TRUE ~ as.character(num_healthcare_visits)),
+    health_care_access = factor(health_care_access)
+  )
+
+#FSQ
+#food stamps, food insecurity
+xpt <- foreign::read.xport("../Data/FSQ_E.xpt")
+data <- merge(data, xpt[c("SEQN", "FSQ165", "FSQ171", "FSD670ZC", "FSD032A", "FSD032B")], by = "SEQN", all.x = TRUE) %>% 
+  rename(ever_received_food_stamps = FSQ165,
+         #food_stamps_past_yr = FSQ171,
+         num_months_WIC = FSD670ZC,
+         worried_house_run_out_food = FSD032A,
+         food_ran_out = FSD032B)
+
+#PFQ
+#risk_mobility
+xpt <- foreign::read.xport("../Data/PFQ_E.xpt")
+data <- merge(data, xpt[c("SEQN","PFQ054")], by = "SEQN", all.x = TRUE)
+data <- data %>%   
+  dplyr::rename(difficulty_walking = PFQ054) 
+
+#set factor levels for difficulty walking
+data$difficulty_walking <- factor(data$difficulty_walking, levels = c(2,1), labels = c("No", "Yes"))
+
+#BPQ
+#blood pressure at risk
+xpt <- foreign::read.xport("../Data/BPQ_E.xpt")
+data <- merge(data,xpt[c("SEQN", "BPQ020", "BPQ080")], by = "SEQN", all.x = TRUE) %>% 
+  rename(high_blood_pressure = BPQ020,
+         cholesterol = BPQ080)
+
+data <- data %>% 
+  mutate(cholesterol = factor(cholesterol))
+  
+  
+  
+#GLU
+#fasting glucose
+xpt <- foreign::read.xport("../Data/GLU_E.xpt")
+data <- merge(data, xpt[c("SEQN", "LBDGLUSI")], by = "SEQN", all.x = TRUE) %>%
+  rename(fasting_glucose = LBDGLUSI)
+
+#fasting glucose
+#data <- data %>% 
+#  mutate(fasting_glucose = case_when(
+#    fasting_glucose <= 4.995 ~ "Not at Risk",
+#    fasting_glucose > 4.995 ~ "At Risk",
+#    is.na(fasting_glucose) ~ "Unknown"
+#  ))
+
+#risk_glucose
+#data$fasting_glucose <- factor(data$fasting_glucose, levels = c("Not at Risk", "At Risk"), c("Not at Risk", "At Risk"))
+#data <- data %>% 
+#  mutate(risk_glucose = case_when(
+#    fasting_glucose == "At Risk" ~ 1,
+#    TRUE ~ as.double(0)
+#  ))
+
+#ALQ
+#alcohol consumption
+xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
+data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ140Q", "ALQ140U", "ALQ110")], by = "SEQN", all.x = TRUE) %>% 
+  mutate(had_12_drinks_in_1yr = ALQ101,
+         avg_drinks_daily_past_yr = ALQ130,
+         num_drinks_past_yr = ALQ120Q,
+         num_drinks_past_yr_unit = ALQ120U,
+         num_days_5_drinks_or_more = ALQ140Q,
+         had_12_drinks_lifetime = ALQ110)
+
+#ALCOHOL CONSUMPTION factor levels
+data <- data %>% 
+  mutate(alcohol_consumption = case_when(
+    ALQ101 == 2 & ALQ110 == 2  ~ "Never",
+    ALQ101 == 1  & ALQ120Q == 0 ~ "Past drinker",
+    ALQ101 == 1 & ((ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365)) ~ "Current Drinker",
+    is.na(ALQ101) ~ "Not Asked",
+    is.na(ALQ120Q) ~ "Not Asked",
+    is.na(ALQ130) ~ "Not Asked",
+    ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "NA",
+    TRUE ~ as.character("Not Asked")
+  )) %>% 
+  mutate(alcohol_consumption = factor(alcohol_consumption, levels = c("Never", "Current Drinker", "Past drinker", "Not Asked")))
+
+#SSQ
+#RELIGIOUS ATTENDANCE
+xpt <- foreign::read.xport("../Data/SSQ_E.xpt")
+
+data <- merge(data, xpt[c("SEQN", "SSD044", "SSQ011")], by = "SEQN", all.x = TRUE) %>% 
+  rename(religious_attendance = SSD044,
+         emotional_support = SSQ011)
+
+data <- data %>% 
+  mutate(emotional_support = factor(emotional_support))
+
+#MCQ
+#heart attack and stroke
+xpt <- foreign::read.xport("../Data/MCQ_E.xpt")
+data <- merge(data, xpt[c("SEQN", "MCQ160E", "MCQ160F", "MCQ160B", "MCQ160C", "MCQ160D")], by = "SEQN", all.x = TRUE) %>% 
+  rename(heart_attack = MCQ160E,
+         stroke = MCQ160F,
+         congestive = MCQ160B,
+         coronary = MCQ160C,
+         angina = MCQ160D)
+
+data <- data %>% 
+  mutate(congestive = factor(congestive),
+         coronary = factor(coronary),
+         angina = factor(angina))
+
+#DIQ
+#diabetes
+xpt <- foreign::read.xport("../Data/DIQ_E.xpt")
+data <- merge(data, xpt[c("SEQN", "DIQ010")], by = "SEQN", all.x = TRUE) %>% 
+  rename(diabetes = DIQ010)
+
+data <- data %>% 
+  mutate(diabetes = factor(diabetes))
+
+#set gender factor levels
+data$gender <- factor(data$gender,levels = c(1,2), labels = c("Male", "Female"))
+
+data <- data %>% 
+  mutate(ethnicity = case_when(
+    ethnicity %in% c(1,2) ~ 1,
+    TRUE ~ as.double(ethnicity)
+  ))
+
+#set ethnicity factor levels
+data$ethnicity <- factor(data$ethnicity, levels = c(3,1,4,5), labels = c( "Non-Hispanic White", "Hispanic", "Non-Hispanic Black", "Other"))
+
+#set education factor levels
+data$education <- factor(data$education, levels = c(3,1,2,4,5), labels = c( "High School/GED", "Less than 9th grade", "9-11th Grade","Some college", "College Graduate or above"))
+
+#refactor education
+data <- data %>% 
+  mutate(education = case_when(
+    education %in% c("Less than 9th grade", "9-11th Grade") ~ "Less than High School",
+    TRUE ~ as.character(education)
+  ))
+
+#specify factor levels and order for education
+data$education <- factor(data$education, levels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above"), labels = c("High School/GED", "Less than High School", "Some college", "College Graduate or above"))
+
+#set factor for marital status
+data$marital_status <- factor(data$marital_status, levels = c(5,1,2,3,4,6), labels = c("Never Married", "Married", "Widowed", "Divorced", "Separated", "Living with partner"))
+
+#specify factor levels for marital status
+data <- data %>% 
+  mutate(marital_status = case_when(
+    marital_status %in% c("Married", "Living with partner") ~ "Married",
+    marital_status %in% c("Divorced", "Widowed", "Separated") ~ "Previously Married",
+    TRUE ~ as.character(marital_status)
+  ))
+data$marital_status <- factor(data$marital_status, levels = c("Never Married", "Married", "Previously Married", "Refused", "Don't Know"),
+                              labels = c("Never Married", "Married", "Previously Married", "Refused", "Don't Know"))
+
+#set factor born outside us
+data$born_outside_us <- factor(data$born_outside_us, levels = c(1,2,4,5), labels = c("Born in US", "Born in Mexico", "Born in other spanish speaking country", "Born in other non-spanish speaking country"))
+data <- data %>% 
+  mutate(born_outside_us = case_when(
+    born_outside_us %in% c("Born in Mexico", "Born in other spanish speaking country", "Born in other non-spanish speaking country") ~ " Born outside US",
+    TRUE ~ as.character(born_outside_us)
+  ))
+data$born_outside_us <- factor(data$born_outside_us, levels = c("Born in US", "Born outside US"), labels = c("Born in US", "Born outside US"))
+
+#factor poverty level
+data$poverty_level_category <- factor(data$poverty_level_category, c(2,1,3), c("Poverty Index in (1.30, 1.85)", "Poverty Index <= 1.3", "Poverty Index > 1.85"))
+
+#set missing health insurance values to 'unknown'
+data <- data %>% 
+  mutate(health_insurance = case_when(
+    is.na(health_insurance) ~ "Unknown",
+    TRUE ~ as.character(health_insurance)
+  ))
+data <- data %>% 
+  mutate(private_insurance = case_when(
+    is.na(private_insurance) ~ "Unknown",
+    TRUE ~ as.character(private_insurance)
+  ))
+data <- data %>% 
+  mutate(medicare = case_when(
+    is.na(medicare) ~ "Unknown",
+    TRUE ~ as.character(medicare)
+  ))
+data <- data %>% 
+  mutate(medicaid = case_when(
+    is.na(medicaid) ~ "Unknown",
+    TRUE ~ as.character(medicaid)
+  ))
+
+#factor health insurance variables
+data$health_insurance <- factor(data$health_insurance, c("2","1"), c("Not Covered", "Covered"))
+data$private_insurance <- factor(data$private_insurance, c("Unknown", "14"), c("Not Covered", "Covered"))
+data$medicare <- factor(data$medicare, c( "Unknown","15"), c("Not Covered", "Covered"))
+data$medicaid <- factor(data$medicaid, c( "Unknown", "17"), c("Not Covered", "Covered"))
+
+#factor healthcare visits
+data$num_healthcare_visits <- factor(data$num_healthcare_visits, c(1,2,3,4,5), c("0 to 1", "2 to 3","4 to 9","10 to 12", "13 or more"))
+
+#factor food insecurity
+data$ever_received_food_stamps <- factor(data$ever_received_food_stamps, c(1,2), c("Yes", "No"))
+data$worried_house_run_out_food <- factor(data$worried_house_run_out_food, c(3,1,2), c("Never true", "Often True", "Sometimes true"))
+data$food_ran_out <- factor(data$food_ran_out, c(3, 1,2), c("Never true","Often True", "Sometimes true"))
+
+#data$mobility_limit <- factor(data$mobility_limit, c(1,2), c("Yes", "No"))
+
+#factor bp
+data$high_blood_pressure <- factor(data$high_blood_pressure, c(2,1), c("No", "Yes"))
+
+#factor alcohol consumption
+data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
+
+#copy heart attack and stroke to temp columps to keep numeric encodings
+data$heart_attack_num <- data$heart_attack
+data$stroke_num <- data$stroke
+
+#factor heart attack and stroke values to yes/no for tables and visualization
+data$heart_attack <- factor(data$heart_attack, c(1,2), c("Yes", "No"))
+data$stroke <- factor(data$stroke, c(1,2), c("Yes", "No"))
+
+#Religious Attendance set levels
+data <- data %>% 
+  mutate(religious_attendance_num = religious_attendance,
+          religious_attendance = case_when(
+          religious_attendance < 50 ~ "Less than Weekly",
+          religious_attendance %in% c(50,51,52) ~ "Weekly",
+          religious_attendance > 52 & religious_attendance < 7777 ~ "More than Weekly",
+          religious_attendance >= 7777 ~ "NA",
+          TRUE ~ as.character(religious_attendance)
+        ))
+
+#religious attendance set factor
+data$religious_attendance <- factor(data$religious_attendance, levels = c("Less than Weekly", "Weekly", "More than Weekly"), labels = c("Less than Weekly", "Weekly", "More than Weekly"))
+
+#BMX
+#body mass index to calculate rfm
+xpt <- foreign::read.xport("../Data/BMX_E.xpt")
+data <- merge(data, xpt[c("SEQN", "BMXWT", "BMXHT", "BMXWAIST")], by = "SEQN", all.x = TRUE) %>% 
+  rename(height = BMXHT,
+         weight = BMXWT,
+         waist = BMXWAIST)
+
+#RFM calculation
+data <- data %>% 
+  mutate(rfm = case_when(
+    gender == "Male" ~ as.double(64 - (20 * (height / waist))),
+    gender == "Female" ~ as.double(76 - (20 * (height / waist)))
+  ))
+
+#create cvd variable for modeling
+data <- data %>% 
+  mutate(cvd = case_when(
+    heart_attack == "Yes" | stroke == "Yes" ~ 1,
+    TRUE ~ as.numeric(0)
+  ))
+
+#filter age 40 and up
+data <- data %>% 
+  filter(age >= 40)
+```
+
+```{r}
+#Variable Frequency table
+data %>% 
+  dplyr::select(
+         age, 
+         num_healthcare_visits, 
+         gender, 
+         ethnicity, 
+         education, 
+         marital_status, 
+         food_ran_out, 
+         health_insurance, 
+         home,
+         poverty_level_category, 
+         emotional_support,
+         health_care_access,
+         DPQ010,
+         DPQ020,
+         DPQ030,
+         DPQ040,
+         DPQ050,
+         DPQ060,
+         DPQ070,
+         DPQ080,
+         DPQ090,
+         high_blood_pressure, 
+         cholesterol,
+         diabetes,
+         alcohol_consumption, 
+         tobacco_5_days,
+         WHD010,
+         WHD020,
+         religious_attendance,
+         fasting_glucose, 
+         heart_attack,
+         stroke,
+         congestive,
+         coronary,
+         angina) %>% 
+  sumtable()
+```
