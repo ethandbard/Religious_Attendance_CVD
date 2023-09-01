@@ -1,11 +1,15 @@
 ---
-title: "Religious Attendance and CVD"
 output: 
   html_notebook: 
+    toc: yes
+    toc_float: yes
     fig_width: 4
+    theme: paper
 editor_options: 
   chunk_output_type: inline
 ---
+
+# Data
 
 ```{r, include = FALSE}
 #notebook settings - no messages or warnings in chunk output
@@ -32,6 +36,7 @@ library(pROC)
 library(modelsummary)
 library(corrr)
 library(corrplot)
+library(car)
 ```
 
 ```{r import data}
@@ -50,12 +55,24 @@ data <- xpt[c("SEQN", "RIAGENDR", "RIDAGEYR", "RIDRETH1", "DMDEDUC2", "DMDMARTL"
 
 #SMQ
 #TOBACCO
-xpt <- foreign::read.xport("../Data/SMQRTU_E.xpt")
-data <- merge(data, xpt[c("SEQN","SMQ680")], by = "SEQN", all.x = TRUE) %>% 
-  rename(tobacco_5_days = SMQ680)
+xpt <- foreign::read.xport("../Data/SMQ_E.xpt")
+data <- merge(data, xpt[c("SEQN","SMQ020", "SMQ040")], by = "SEQN", all.x = TRUE) %>% 
+  rename(cigs_100 = SMQ020,
+         cigs_now = SMQ040)
+
+#never smoked, past smoker, current smoker
+data <- data %>% 
+  mutate(cigarette_use = case_when(
+    #never smoked - 'no' to "have you ever smoked 100 cigarettes"
+    cigs_100 == 2 ~ "Never smoked",
+    #past smoker - smoked 100 cigs in life but does not smoke now
+    cigs_100 == 1 & cigs_now == 3 ~ "Past smoker",
+    #current smoker - smoked 100 cigs and smokes every day or some days
+    cigs_100 == 1 & cigs_now %in% c(1,2) ~ "Current smoker"
+  ))
 
 data <- data %>% 
-  mutate(tobacco_5_days = factor(tobacco_5_days, levels = c(1,2), labels = c("Yes", "No")))
+  mutate(cigarette_use = factor(cigarette_use, levels = c("Never smoked", "Past smoker", "Current smoker")))
 
 # xpt <- foreign::read.xport("../Data/SMQ_E.xpt")
 # data <- merge(data, xpt[c("SEQN","SMQ020", "SMQ040")], by = "SEQN", all.x = TRUE)
@@ -72,12 +89,18 @@ data <- data %>%
 #   mutate(tobacco_use = factor(tobacco_use, levels = c("Never", "Current", "Former")))
 
 #WHQ
+#height is inches
+#weight is pounds
 xpt <- foreign::read.xport("../Data/WHQ_E.xpt")
 data <- merge(data, xpt[c("SEQN","WHD010", "WHD020")], by = "SEQN", all.x = TRUE) %>% 
   rename(height = WHD010,
          weight = WHD020) %>% 
   filter(!(height %in% c(7777, 9999)),
          !(weight %in% c(7777,9999)))
+
+#BMI
+#formula: weight (lb) / height (in) / height (in) * 703
+data$BMI <- round(data$weight / data$height / data$height * 703, 1)
 
 #DPQ
 #depression
@@ -101,7 +124,9 @@ data <- data %>%
 
 data <- data %>% 
   group_by(SEQN) %>% 
-  mutate(depression_count = sum(c(is.na(c(DPQ010, DPQ020, DPQ030, DPQ040, DPQ050, DPQ060, DPQ070, DPQ080, DPQ090)))))
+  mutate(depression_count = sum(c(is.na(c(DPQ010, DPQ020, DPQ030, DPQ040, 
+                                          DPQ050, DPQ060, DPQ070, DPQ080, 
+                                          DPQ090)))))
 
 data %>% 
   filter(depression_count > 0, age >= 40, depression_count < 9) %>% 
@@ -111,7 +136,9 @@ data %>%
 #sum depression if there's at least 5 values
 data <- data %>% 
   mutate(depression = case_when(
-    depression_count <= 5 ~ sum(DPQ010, DPQ020, DPQ030, DPQ040, DPQ050, DPQ060, DPQ070, DPQ080, DPQ090, na.rm = TRUE)))
+    depression_count <= 5 ~ sum(DPQ010, DPQ020, DPQ030, DPQ040, 
+                                DPQ050, DPQ060, DPQ070, DPQ080, 
+                                DPQ090, na.rm = TRUE)))
 
 #HOQ
 #home owned, bought, rented, other
@@ -119,7 +146,9 @@ xpt <- foreign::read.xport("../Data/HOQ_E.xpt")
 data <- merge(data, xpt[c("SEQN","HOQ065")], by = "SEQN", all.x = TRUE) %>% 
   rename(home = HOQ065)
 data <- data %>% 
-  mutate(home = factor(home, levels = c(1,2,3,7,9, '.'), labels = c("Owned or being bought", "Rented", "Other Arrangement", "Refused", "Don't know", "Missing")))
+  mutate(home = factor(home, levels = c(1,2,3,7,9, '.'), labels = c("Owned or being bought", 
+                                                                    "Rented", "Other Arrangement", 
+                                                                    "Refused", "Don't know", "Missing")))
 
 
 #INQ
@@ -147,13 +176,17 @@ data <- merge(data, xpt[c("SEQN", "HUQ050", "HUQ030")], by = "SEQN", all.x = TRU
   mutate(num_healthcare_visits = case_when(
     num_healthcare_visits %in% c(0,1) ~ "1",
     TRUE ~ as.character(num_healthcare_visits)),
-    health_care_access = factor(health_care_access, levels = c(1,2,3,7,9,"."), labels = c("Yes", "There is no place", "There is more than one place", "Refused", "Don't know", "Missing"))
+    health_care_access = factor(health_care_access, levels = c(1,2,3,7,9,"."), 
+                                labels = c("Yes", "There is no place", 
+                                           "There is more than one place", "Refused", 
+                                           "Don't know", "Missing"))
   )
 
 #FSQ
 #food stamps, food insecurity
 xpt <- foreign::read.xport("../Data/FSQ_E.xpt")
-data <- merge(data, xpt[c("SEQN", "FSQ165", "FSQ171", "FSD670ZC", "FSD032A", "FSD032B")], by = "SEQN", all.x = TRUE) %>% 
+data <- merge(data, xpt[c("SEQN", "FSQ165", "FSQ171", "FSD670ZC", "FSD032A", "FSD032B")],
+              by = "SEQN", all.x = TRUE) %>% 
   rename(ever_received_food_stamps = FSQ165,
          #food_stamps_past_yr = FSQ171,
          num_months_WIC = FSD670ZC,
@@ -204,28 +237,28 @@ data <- data %>%
 
 #ALQ
 #alcohol consumption
-xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
-data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ140Q", "ALQ140U", "ALQ110")], by = "SEQN", all.x = TRUE) %>% 
-  mutate(had_12_drinks_in_1yr = ALQ101,
-         avg_drinks_daily_past_yr = ALQ130,
-         num_drinks_past_yr = ALQ120Q,
-         num_drinks_past_yr_unit = ALQ120U,
-         num_days_5_drinks_or_more = ALQ140Q,
-         had_12_drinks_lifetime = ALQ110)
+# xpt <- foreign::read.xport("../Data/ALQ_E.xpt")
+# data <- merge(data, xpt[c("SEQN", "ALQ101", "ALQ130", "ALQ120Q", "ALQ120U", "ALQ140Q", "ALQ140U", "ALQ110")], by = "SEQN", all.x = TRUE) %>% 
+#   mutate(had_12_drinks_in_1yr = ALQ101,
+#          avg_drinks_daily_past_yr = ALQ130,
+#          num_drinks_past_yr = ALQ120Q,
+#          num_drinks_past_yr_unit = ALQ120U,
+#          num_days_5_drinks_or_more = ALQ140Q,
+#          had_12_drinks_lifetime = ALQ110)
 
 #ALCOHOL CONSUMPTION factor levels
-data <- data %>% 
-  mutate(alcohol_consumption = case_when(
-    ALQ101 == 2 & ALQ110 == 2  ~ "Never",
-    ALQ101 == 1  & ALQ120Q == 0 ~ "Past drinker",
-    ALQ101 == 1 & ((ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365)) ~ "Current Drinker",
-    is.na(ALQ101) ~ "Not Asked",
-    is.na(ALQ120Q) ~ "Not Asked",
-    is.na(ALQ130) ~ "Not Asked",
-    ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "NA",
-    TRUE ~ as.character("Other")
-  )) %>% 
-  mutate(alcohol_consumption = factor(alcohol_consumption, levels = c("Never", "Current Drinker", "Past drinker", "Not Asked", "Other")))
+# data <- data %>% 
+#   mutate(alcohol_consumption = case_when(
+#     ALQ101 == 2 & ALQ110 == 2  ~ "Never",
+#     ALQ101 == 1  & ALQ120Q == 0 ~ "Past drinker",
+#     ALQ101 == 1 & ((ALQ120Q > 0 & ALQ120Q <= 365) | (ALQ130 > 0 & ALQ130 <= 83) | (ALQ140Q > 0 & ALQ140Q <= 365)) ~ "Current Drinker",
+#     is.na(ALQ101) ~ "Not Asked",
+#     is.na(ALQ120Q) ~ "Not Asked",
+#     is.na(ALQ130) ~ "Not Asked",
+#     ALQ101 == 9 | ALQ110 == 9 | ALQ120Q == 999 | ALQ130 == 999 | ALQ140U | 9999 ~ "NA",
+#     TRUE ~ as.character("Other")
+#   )) %>% 
+#   mutate(alcohol_consumption = factor(alcohol_consumption, levels = c("Never", "Current Drinker", "Past drinker", "Not Asked", "Other")))
 
 #SSQ
 #RELIGIOUS ATTENDANCE
@@ -272,7 +305,8 @@ data <- data %>%
   ))
 
 #set ethnicity factor levels
-data$ethnicity <- factor(data$ethnicity, levels = c(3,1,4,5), labels = c( "Non-Hispanic White", "Hispanic", "Non-Hispanic Black", "Other"))
+#will be NA if not one of these three, to be filtered out later
+data$ethnicity <- factor(data$ethnicity, levels = c(3,1,4), labels = c( "Non-Hispanic White", "Hispanic", "Non-Hispanic Black"))
 
 #set education factor levels
 data$education <- factor(data$education, levels = c(3,1,2,4,5), labels = c( "High School/GED", "Less than 9th grade", "9-11th Grade","Some college", "College Graduate or above"))
@@ -352,7 +386,7 @@ data$food_ran_out <- factor(data$food_ran_out, c(3, 1,2), c("Never true","Often 
 data$high_blood_pressure <- factor(data$high_blood_pressure, c(2,1), c("No", "Yes"))
 
 #factor alcohol consumption
-data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
+# data$had_12_drinks_in_1yr <- factor(data$had_12_drinks_in_1yr, c(1,2), c("Yes", "No"))
 
 #copy heart attack and stroke to temp columps to keep numeric encodings
 data$heart_attack_num <- data$heart_attack
@@ -378,19 +412,24 @@ data$religious_attendance <- factor(data$religious_attendance, levels = c("Less 
 
 #create cvd variable for modeling
 data <- data %>% 
-  mutate(cvd = case_when(
+  mutate(cvd = factor(case_when(
     heart_attack == "Yes" | stroke == "Yes" | congestive == "Yes" | coronary == "Yes" | angina == "Yes" ~ 1, 
     TRUE ~ as.numeric(0)
-  ))
+  )))
 
-#filter age 40 and up
+#filter age 40 and up, and restrict to white, black, hispanic
 data <- data %>%
-  filter(age >= 40)
+  filter(age >= 40, !(is.na(ethnicity)))
 ```
 
-```{r, eval = FALSE}
-#Variable Frequency table
-data %>% 
+### Data and variable outputs
+
+```{r}
+#rename data
+source_data <- data
+
+#variables of interest
+data <- source_data %>% 
   dplyr::select(
          age, 
          num_healthcare_visits, 
@@ -408,35 +447,21 @@ data %>%
          high_blood_pressure, 
          cholesterol,
          diabetes,
-         alcohol_consumption, 
-         tobacco_5_days,
-         height,
-         weight,
+         cigarette_use,
+         BMI,
          religious_attendance,
          cvd
-         #heart_attack,
-         #stroke,
-         #congestive,
-         #coronary,
-         #angina
-         ) %>% 
-  sumtable(out = "csv", file = "variables.csv")
+         )
 ```
 
 ```{r, eval = FALSE}
-#output df to .csv
-data %>% 
+#output variable frequency table to .csv
+sumtable(data, out = "csv", file = "variables.csv")
+
+#output full dataset to .csv
+source_data %>% 
   write.csv(file = "data.csv")
 ```
-
-
-
-
-
-
-
-
-
 
 
 
@@ -453,11 +478,14 @@ cvd_univ <- function(x, df){
 ```
 
 ```{r}
+##TODO: is it necessary to standardize continuous variables for logistic regression?
+
 #Center and Scale continuous variables
 data$age <- scale(data$age)
 data$depression <- scale(data$depression)
-data$height <- scale(data$height)
-data$weight <- scale(data$weight)
+data$BMI <- scale(data$BMI)
+#data$height <- scale(data$height)
+#data$weight <- scale(data$weight)
 ```
 
 ## Control Variables
@@ -599,6 +627,16 @@ blr_model_fit_stats(depression)
 
 ## Risk Factors
 
+### BMI
+
+```{r}
+BMI <- glm(cvd ~ BMI, data = data, family = "binomial")
+summary(BMI)
+blr_model_fit_stats(BMI)
+chisq.test(data$cvd, data$BMI)
+```
+
+
 ### high blood pressure
 
 ```{r}
@@ -630,23 +668,14 @@ chisq.test(data$cvd, data$diabetes)
 ```
 
 
-### alcohol consumption
+
+### cigarettes
 
 ```{r}
-alcohol_consumption <- glm(cvd ~ alcohol_consumption, data = data, family = "binomial")
-summary(alcohol_consumption)
-blr_model_fit_stats(alcohol_consumption)
-chisq.test(data$cvd, data$alcohol_consumption)
-```
-
-
-### tobacco last 5 days
-
-```{r}
-tobacco_5_days <- glm(cvd ~ alcohol_consumption, data = data, family = "binomial")
-summary(tobacco_5_days)
-blr_model_fit_stats(tobacco_5_days)
-chisq.test(data$cvd, data$tobacco_5_days)
+cigarette_use <- glm(cvd ~ cigarette_use, data = data, family = "binomial")
+summary(cigarette_use)
+blr_model_fit_stats(cigarette_use)
+chisq.test(data$cvd, data$cigarette_use)
 ```
 
 
@@ -659,8 +688,10 @@ blr_model_fit_stats(religious_attendance)
 chisq.test(data$cvd, data$religious_attendance)
 ```
 
+
+# Robust Model
+
 ```{r}
-library(car)
 model <- glm(cvd ~ age+ 
          num_healthcare_visits+ 
          gender+ 
@@ -677,10 +708,8 @@ model <- glm(cvd ~ age+
          high_blood_pressure+ 
          cholesterol+
          diabetes+
-         alcohol_consumption+ 
-         tobacco_5_days+
-         height+
-         weight+
+         cigarette_use+
+         BMI+
          religious_attendance,
          data = data,
          family = "binomial")
@@ -691,10 +720,12 @@ vif(model)
 ```
 
 ```{r}
+# model significance
 with(model, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
 ```
 
 ```{r}
+# robust model table
 model_tbl <- tbl_regression(model, exponentiate = TRUE) %>% 
   modify_table_styling(
     columns = c(estimate, ci),
@@ -707,4 +738,74 @@ model_tbl <- tbl_regression(model, exponentiate = TRUE) %>%
 
 model_tbl
 ```
+
+
+# Stratified models
+
+```{r}
+data_f <- data %>% filter(gender == "Female")
+data_m <- data %>% filter(gender == "Male")
+```
+
+
+```{r}
+model_f <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         ethnicity+ 
+         education+ 
+         marital_status+ 
+         food_ran_out+ 
+         health_insurance+ 
+         home+
+         poverty_level_category+ 
+         emotional_support+
+         health_care_access+
+         depression+
+         high_blood_pressure+ 
+         cholesterol+
+         diabetes+
+         cigarette_use+
+         BMI+
+         religious_attendance,
+         data = data_f,
+         family = "binomial")
+
+model_m <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         ethnicity+ 
+         education+ 
+         marital_status+ 
+         food_ran_out+ 
+         health_insurance+ 
+         home+
+         poverty_level_category+ 
+         emotional_support+
+         health_care_access+
+         depression+
+         high_blood_pressure+ 
+         cholesterol+
+         diabetes+
+         cigarette_use+
+         BMI+
+         religious_attendance,
+         data = data_m,
+         family = "binomial")
+```
+
+## Female
+
+```{r}
+summary(model_f)
+blr_model_fit_stats(model_f)
+vif(model_f)
+```
+
+## Male
+
+```{r}
+summary(model_m)
+blr_model_fit_stats(model_m)
+vif(model_m)
+```
+
 
