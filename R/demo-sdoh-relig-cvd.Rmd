@@ -1,4 +1,5 @@
 ---
+title: "Demographics, Social Determinants of Health, Risk Factors, Cardiovascular Disease"
 output: 
   html_notebook: 
     toc: yes
@@ -518,14 +519,6 @@ blr_model_fit_stats(gender)
 chisq.test(data$cvd, data$gender)
 ```
 
-### All control variables
-
-```{r}
-control <- glm(cvd ~ age + gender + num_healthcare_visits, data = data, family = "binomial")
-summary(control)
-blr_model_fit_stats(control)
-```
-
 ## Demographics
 
 ### Ethnicity
@@ -808,4 +801,299 @@ blr_model_fit_stats(model_m)
 vif(model_m)
 ```
 
+## Control only
 
+### Female
+
+```{r}
+control_f <- glm(cvd ~ age + num_healthcare_visits, data = data_f, family = "binomial")
+summary(control_f)
+blr_model_fit_stats(control_f)
+```
+
+### Male
+
+```{r}
+control_m <- glm(cvd ~ age + num_healthcare_visits, data = data_m, family = "binomial")
+summary(control_m)
+blr_model_fit_stats(control_m)
+```
+
+
+## Control + Demographics
+
+```{r}
+model_1f <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         ethnicity+ 
+         education+ 
+         marital_status,
+         data = data_f,
+         family = "binomial")
+
+model_1m <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         ethnicity+ 
+         education+ 
+         marital_status,
+         data = data_m,
+         family = "binomial")
+```
+
+### Female
+
+```{r}
+summary(model_1f)
+blr_model_fit_stats(model_1f)
+vif(model_1f)
+```
+
+### Male
+
+```{r}
+summary(model_1m)
+blr_model_fit_stats(model_1m)
+vif(model_1m)
+```
+
+## Control + demographic + riskfactor
+
+```{r}
+model_2f <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         ethnicity+ 
+         education+ 
+         marital_status+ 
+         high_blood_pressure+ 
+         cholesterol+
+         diabetes+
+         cigarette_use+
+         BMI,
+         data = data_f,
+         family = "binomial")
+
+model_2m <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         ethnicity+ 
+         education+ 
+         marital_status+ 
+         high_blood_pressure+ 
+         cholesterol+
+         diabetes+
+         cigarette_use+
+         BMI,
+         data = data_m,
+         family = "binomial")
+```
+
+### Female
+```{r}
+summary(model_2f)
+blr_model_fit_stats(model_2f)
+vif(model_2f)
+```
+
+
+### Male
+
+```{r}
+summary(model_2m)
+blr_model_fit_stats(model_2m)
+vif(model_2m)
+```
+
+## Control + demographic + SDOH
+
+```{r}
+model_3f <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         ethnicity+ 
+         education+ 
+         marital_status+ 
+         food_ran_out+
+         health_insurance+
+         home+
+         poverty_level_category+
+         emotional_support+
+         health_care_access+
+         depression+
+         religious_attendance,
+         data = data_f,
+         family = "binomial")
+
+model_3m <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         ethnicity+ 
+         education+ 
+         marital_status+ 
+         food_ran_out+
+         health_insurance+
+         home+
+         poverty_level_category+
+         emotional_support+
+         health_care_access+
+         depression+
+         religious_attendance,
+         data = data_m,
+         family = "binomial")
+```
+
+### Female
+
+```{r}
+summary(model_3f)
+blr_model_fit_stats(model_3f)
+vif(model_3f)
+```
+
+
+### Male
+
+```{r}
+summary(model_3m)
+blr_model_fit_stats(model_3m)
+vif(model_3m)
+```
+
+# Odds Ratios and P-Value
+
+## all variables
+
+```{r, warning=FALSE}
+model_f_tbl <- tbl_regression(model_f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+model_m_tbl <- tbl_regression(model_m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+tbl_merge(tbls = list(model_f_tbl, 
+                      model_m_tbl),
+          tab_spanner = c("Females", "Males"))
+```
+
+
+## Females
+
+```{r, warning=FALSE}
+
+control_f_tbl <- tbl_regression(control_f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05) 
+
+model_1f_tbl <- tbl_regression(model_1f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+model_2f_tbl <- tbl_regression(model_2f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+model_3f_tbl <- tbl_regression(model_3f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05) 
+
+tbl_merge(tbls = list(control_f_tbl,
+                      model_1f_tbl, 
+                      model_2f_tbl, 
+                      model_3f_tbl, 
+                      model_f_tbl),
+          tab_spanner = c("Control", 
+                          "Demographics", 
+                          "Demo + Risk factors",
+                          "Demo + SDOH",
+                          "All variables"))
+```
+
+## Males
+
+```{r, warning=FALSE}
+
+control_m_tbl <- tbl_regression(control_m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05) 
+
+model_1m_tbl <- tbl_regression(model_1m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+model_2m_tbl <- tbl_regression(model_2m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05)  
+
+model_3m_tbl <- tbl_regression(model_3m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05) 
+
+tbl_merge(tbls = list(control_m_tbl,
+                      model_1m_tbl, 
+                      model_2m_tbl, 
+                      model_3m_tbl, 
+                      model_m_tbl),
+          tab_spanner = c("Control", 
+                          "Demographics", 
+                          "Demo + Risk factors",
+                          "Demo + SDOH",
+                          "All variables"))
+```
