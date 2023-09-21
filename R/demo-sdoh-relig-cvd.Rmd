@@ -38,9 +38,11 @@ library(modelsummary)
 library(corrr)
 library(corrplot)
 library(car)
+library(fastDummies)
+library(nortest)
 ```
 
-```{r import data}
+```{r import data, warning = FALSE}
 #demographics
 #DEMO
 xpt <- foreign::read.xport("../Data/DEMO_E.XPT")
@@ -457,16 +459,65 @@ data <- source_data %>%
 
 ```{r, eval = FALSE}
 #output variable frequency table to .csv
-sumtable(data, out = "csv", file = "variables.csv")
+sumtable(data, out = "csv", file = "../out/summary_table.csv")
 
 #output full dataset to .csv
 source_data %>% 
-  write.csv(file = "data.csv")
+  write.csv(file = "../out/source_data.csv")
+```
+
+# Check distribution of continuous variables
+
+```{r}
+data %>% 
+  ggplot(aes(x = age)) +
+  geom_histogram(bins=30)
+
+data %>% 
+  ggplot(aes(x = age)) + 
+  geom_boxplot()
+
+qqnorm(data$age)
+qqline(data$age)
+
+shapiro.test(data$age)
+ad.test(data$age)
+```
+
+```{r}
+data %>% 
+  ggplot(aes(x = BMI)) +
+  geom_histogram(bins=30)
+
+data %>% 
+  ggplot(aes(x = BMI)) + 
+  geom_boxplot()
+
+qqnorm(data$BMI)
+qqline(data$BMI)
+
+shapiro.test(data$BMI)
+ad.test(data$BMI)
+```
+
+```{r}
+data %>% 
+  ggplot(aes(x = depression)) +
+  geom_histogram(bins=30)
+
+data %>% 
+  ggplot(aes(x = depression)) + 
+  geom_boxplot()
+
+qqnorm(data$depression)
+qqline(data$depression)
+
+shapiro.test(data$depression)
+ad.test(data$depression)
 ```
 
 
-
-# Univariate Analysis
+# Univariate Analysis / Multicollinearity Analysis
 
 ```{r}
 #univariate analysis function
@@ -480,13 +531,67 @@ cvd_univ <- function(x, df){
 
 ```{r}
 ##TODO: is it necessary to standardize continuous variables for logistic regression?
+# only when they are normally distributed 
+# these variables are not
 
 #Center and Scale continuous variables
-data$age <- scale(data$age)
-data$depression <- scale(data$depression)
-data$BMI <- scale(data$BMI)
+#data$age <- scale(data$age)
+#data$age <- center(data$age)
+
+#mean(data$age)
+#sd(data$age)
+#range(data$age)
+
+#data$depression <- scale(data$depression)
+#data$BMI <- scale(data$BMI)
 #data$height <- scale(data$height)
 #data$weight <- scale(data$weight)
+```
+
+## Chi Square Matrix
+
+```{r, warning=FALSE}
+chi_square_matrix <- matrix(nrow = ncol(data), ncol = ncol(data))
+for (i in 1:ncol(data)) {
+  for (j in 1:ncol(data)) {
+    if (i != j) {
+      # Perform a chi-square test for independence
+      chi_square_test <- chisq.test(data[, i], data[, j])
+      # Store the results of the chi-square test in the matrix
+      chi_square_matrix[i, j] <- chi_square_test$p.value
+    }
+  }
+}
+
+# Print the chi-square matrix
+rownames(chi_square_matrix) <- colnames(data)
+colnames(chi_square_matrix) <- colnames(data)
+data.frame(chi_square_matrix)
+data.frame(chi_square_matrix) %>% 
+  write.csv(file = "../out/chi_square_matrix.csv")
+```
+
+
+## Kruskal-Wallis matrix
+
+```{r}
+kruskal_matrix <- matrix(nrow = ncol(data), ncol = ncol(data))
+for (i in 1:ncol(data)) {
+  for (j in 1:ncol(data)) {
+    if (i != j) {
+      # Perform a kruskal test for independence
+      kruskal_test <- kruskal.test(data[, i] ~ data[, j], data = data)
+      # Store the results of the chi-square test in the matrix
+      kruskal_matrix[i, j] <- kruskal_test$p.value
+    }
+  }
+}
+
+rownames(kruskal_matrix) <- colnames(data)
+colnames(kruskal_matrix) <- colnames(data)
+data.frame(kruskal_matrix)
+data.frame(kruskal_matrix) %>% 
+  write.csv(file="../out/kruskal_wallis_matrix.csv")
 ```
 
 ## Control Variables
@@ -494,11 +599,10 @@ data$BMI <- scale(data$BMI)
 ### Age 
 
 ```{r}
-#control variables
-
 age <- glm(cvd ~ age, data = data, family = "binomial")
 summary(age)
 blr_model_fit_stats(age)
+chisq.test(data$cvd, data$num_healthcare_visits)
 ```
 
 ### Number of healthcare visits
@@ -856,14 +960,11 @@ blr_model_fit_stats(model_1m)
 vif(model_1m)
 ```
 
-## Control + demographic + riskfactor
+## Control + risk factors
 
 ```{r}
 model_2f <- glm(cvd ~ age+ 
          num_healthcare_visits+ 
-         ethnicity+ 
-         education+ 
-         marital_status+ 
          high_blood_pressure+ 
          cholesterol+
          diabetes+
@@ -874,9 +975,6 @@ model_2f <- glm(cvd ~ age+
 
 model_2m <- glm(cvd ~ age+ 
          num_healthcare_visits+ 
-         ethnicity+ 
-         education+ 
-         marital_status+ 
          high_blood_pressure+ 
          cholesterol+
          diabetes+
@@ -902,38 +1000,30 @@ blr_model_fit_stats(model_2m)
 vif(model_2m)
 ```
 
-## Control + demographic + SDOH
+## Control + SDOH
 
 ```{r}
 model_3f <- glm(cvd ~ age+ 
          num_healthcare_visits+ 
-         ethnicity+ 
-         education+ 
-         marital_status+ 
          food_ran_out+
          health_insurance+
          home+
          poverty_level_category+
          emotional_support+
          health_care_access+
-         depression+
-         religious_attendance,
+         depression,
          data = data_f,
          family = "binomial")
 
 model_3m <- glm(cvd ~ age+ 
          num_healthcare_visits+ 
-         ethnicity+ 
-         education+ 
-         marital_status+ 
          food_ran_out+
          health_insurance+
          home+
          poverty_level_category+
          emotional_support+
          health_care_access+
-         depression+
-         religious_attendance,
+         depression,
          data = data_m,
          family = "binomial")
 ```
@@ -953,6 +1043,39 @@ vif(model_3f)
 summary(model_3m)
 blr_model_fit_stats(model_3m)
 vif(model_3m)
+```
+
+##Control + religious attendance
+
+```{r}
+model_4f <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         religious_attendance,
+         data = data_f,
+         family = "binomial")
+
+model_4m <- glm(cvd ~ age+ 
+         num_healthcare_visits+ 
+         religious_attendance,
+         data = data_m,
+         family = "binomial")
+```
+
+### Female
+
+```{r}
+summary(model_4f)
+blr_model_fit_stats(model_4f)
+vif(model_4f)
+```
+
+
+### Male
+
+```{r}
+summary(model_4m)
+blr_model_fit_stats(model_4m)
+vif(model_4m)
 ```
 
 # Odds Ratios and P-Value
