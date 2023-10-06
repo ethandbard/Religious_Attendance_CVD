@@ -17,7 +17,7 @@ editor_options:
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
-```{r, warning = FALSE, message = TRUE}
+```{r, warning = FALSE, message = FALSE}
 #import libraries
 library(tidyverse)
 library(kableExtra)
@@ -468,6 +468,8 @@ source_data %>%
 
 # Check distribution of continuous variables
 
+## Age
+
 ```{r}
 data %>% 
   ggplot(aes(x = age)) +
@@ -483,6 +485,8 @@ qqline(data$age)
 shapiro.test(data$age)
 ad.test(data$age)
 ```
+
+## BMI
 
 ```{r}
 data %>% 
@@ -500,6 +504,8 @@ shapiro.test(data$BMI)
 ad.test(data$BMI)
 ```
 
+## Depression
+
 ```{r}
 data %>% 
   ggplot(aes(x = depression)) +
@@ -514,19 +520,6 @@ qqline(data$depression)
 
 shapiro.test(data$depression)
 ad.test(data$depression)
-```
-
-
-# Univariate Analysis / Multicollinearity Analysis
-
-```{r}
-#univariate analysis function
-cvd_univ <- function(x, df){
-  x <- glm(cvd ~ x, data = df, family = "binomial")
-  summary(x)
-  blr_model_fit_stats(x)
-  chisq.test(data$cvd, data$x)
-}
 ```
 
 ```{r}
@@ -548,7 +541,7 @@ cvd_univ <- function(x, df){
 #data$weight <- scale(data$weight)
 ```
 
-## Chi Square Matrix
+# Chi Square Matrix
 
 ```{r, warning=FALSE}
 chi_square_matrix <- matrix(nrow = ncol(data), ncol = ncol(data))
@@ -572,7 +565,7 @@ data.frame(chi_square_matrix) %>%
 ```
 
 
-## Kruskal-Wallis matrix
+# Kruskal-Wallis matrix
 
 ```{r}
 kruskal_matrix <- matrix(nrow = ncol(data), ncol = ncol(data))
@@ -593,6 +586,8 @@ data.frame(kruskal_matrix)
 data.frame(kruskal_matrix) %>% 
   write.csv(file="../out/kruskal_wallis_matrix.csv")
 ```
+
+# Univariate Analysis
 
 ## Control Variables
 
@@ -1153,15 +1148,27 @@ model_3f_tbl <- tbl_regression(model_3f, exponentiate = TRUE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05) 
 
+model_4f_tbl <- tbl_regression(model_4f, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05) 
+
 tbl_merge(tbls = list(control_f_tbl,
                       model_1f_tbl, 
                       model_2f_tbl, 
                       model_3f_tbl, 
+                      model_4f_tbl,
                       model_f_tbl),
           tab_spanner = c("Control", 
-                          "Demographics", 
-                          "Demo + Risk factors",
-                          "Demo + SDOH",
+                          "Control + Demographics", 
+                          "Control + Risk factors",
+                          "Control + SDOH",
+                          "Control + Religiosity",
                           "All variables"))
 ```
 
@@ -1209,14 +1216,26 @@ model_3m_tbl <- tbl_regression(model_3m, exponentiate = TRUE) %>%
   bold_labels() %>% 
   bold_p(t = 0.05) 
 
+model_4m_tbl <- tbl_regression(model_4m, exponentiate = TRUE) %>% 
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>% 
+  modify_column_hide(column = ci) %>% 
+  bold_labels() %>% 
+  bold_p(t = 0.05) 
+
 tbl_merge(tbls = list(control_m_tbl,
                       model_1m_tbl, 
                       model_2m_tbl, 
                       model_3m_tbl, 
+                      model_4m_tbl,
                       model_m_tbl),
           tab_spanner = c("Control", 
-                          "Demographics", 
-                          "Demo + Risk factors",
-                          "Demo + SDOH",
+                          "Control + Demographics", 
+                          "Control + Risk factors",
+                          "Control + + SDOH",
+                          "Control + Religiosity",
                           "All variables"))
 ```
