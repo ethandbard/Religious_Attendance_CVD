@@ -1394,6 +1394,16 @@ demo_risk_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + m
                    + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI, data = data_m, family = "binomial")
 
 
+# alternative order: control + demo + sdoh
+demo_sdoh_f <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
+                   + food_ran_out + health_insurance + home + poverty_level_category + 
+                        emotional_support + health_care_access + depression, data = data_f, family = "binomial")
+
+demo_sdoh_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
+                   + food_ran_out + health_insurance + home + poverty_level_category + 
+                        emotional_support + health_care_access + depression, data = data_m, family = "binomial")
+
+
 # control + demo + risk + sdoh
 demo_risk_sdoh_f <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
                    + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI
@@ -1428,35 +1438,41 @@ full_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marita
 # females
 model_names <-  c("Demographics",
                      "Demographics and Risk Factors",
+                     "Demographics and SDOH",
                      "Demographics, Risk Factors, SDOH",
                      "Full Model")
 
 Nagelkerke <- c(blr_rsq_nagelkerke(demo_f),
                  blr_rsq_nagelkerke(demo_risk_f),
+                 blr_rsq_nagelkerke(demo_sdoh_f), 
                  blr_rsq_nagelkerke(demo_risk_sdoh_f),
                  blr_rsq_nagelkerke(full_f))
 
 McFadden <- c(blr_rsq_mcfadden_adj(demo_f),
                  blr_rsq_mcfadden_adj(demo_risk_f),
+                 blr_rsq_mcfadden_adj(demo_sdoh_f),
                  blr_rsq_mcfadden_adj(demo_risk_sdoh_f),
                  blr_rsq_mcfadden_adj(full_f))
 
 AIC <- c(AIC(demo_f),
                  AIC(demo_risk_f),
+                 AIC(demo_sdoh_f),
                  AIC(demo_risk_sdoh_f),
                  AIC(full_f))
 
 BIC <- c(BIC(demo_f),
                  BIC(demo_risk_f),
+                 BIC(demo_sdoh_f),
                  BIC(demo_risk_sdoh_f),
                  BIC(full_f))
 
-with(model, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+#with(model, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
 
-with(full_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+#with(full_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
 
 Chisq <- c(with(demo_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(demo_risk_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+           with(demo_sdoh_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(demo_risk_sdoh_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(full_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)))
 
@@ -1476,35 +1492,41 @@ data_frame("Names" = model_names,
 # males
 model_names <-  c("Demographics",
                      "Demographics and Risk Factors",
+                     "Demographics and SDOH",
                      "Demographics, Risk Factors, SDOH",
                      "Full Model")
 
 Nagelkerke <- c(blr_rsq_nagelkerke(demo_m),
                  blr_rsq_nagelkerke(demo_risk_m),
+                 blr_rsq_nagelkerke(demo_sdoh_m), 
                  blr_rsq_nagelkerke(demo_risk_sdoh_m),
                  blr_rsq_nagelkerke(full_m))
 
 McFadden <- c(blr_rsq_mcfadden_adj(demo_m),
                  blr_rsq_mcfadden_adj(demo_risk_m),
+                 blr_rsq_mcfadden_adj(demo_sdoh_m),
                  blr_rsq_mcfadden_adj(demo_risk_sdoh_m),
                  blr_rsq_mcfadden_adj(full_m))
 
 AIC <- c(AIC(demo_m),
                  AIC(demo_risk_m),
+                 AIC(demo_sdoh_m),
                  AIC(demo_risk_sdoh_m),
                  AIC(full_m))
 
 BIC <- c(BIC(demo_m),
                  BIC(demo_risk_m),
+                 BIC(demo_sdoh_m),
                  BIC(demo_risk_sdoh_m),
                  BIC(full_m))
 
-with(model, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+#with(model, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
 
-with(full_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+#with(full_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
 
 Chisq <- c(with(demo_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(demo_risk_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
+           with(demo_sdoh_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(demo_risk_sdoh_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(full_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)))
 
@@ -1545,6 +1567,16 @@ demo_risk_f_tbl <- tbl_regression(demo_risk_f, exponentiate = TRUE) %>%
   bold_labels() %>%
   bold_p(t = 0.05)
 
+demo_sdoh_f_tbl <- tbl_regression(demo_sdoh_f, exponentiate = TRUE) %>%
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>%
+  modify_column_hide(column = ci) %>%
+  bold_labels() %>%
+  bold_p(t = 0.05)
+
 demo_risk_sdoh_f_tbl <- tbl_regression(demo_risk_sdoh_f, exponentiate = TRUE) %>%
   modify_table_styling(
     columns = c(estimate, ci),
@@ -1569,11 +1601,13 @@ tbl_merge(
   tbls = list(
     demo_f_tbl,
     demo_risk_f_tbl,
+    demo_sdoh_f_tbl,
     demo_risk_sdoh_f_tbl,
     full_f_tbl
   ),
   tab_spanner = c("Demographics",
                      "Demographics and Risk Factors",
+                     "Demographics and SDOH",
                      "Demographics, Risk Factors, SDOH",
                      "Full Model")
 )
@@ -1595,6 +1629,16 @@ demo_m_tbl <- tbl_regression(demo_m, exponentiate = TRUE) %>%
   bold_p(t = 0.05)
 
 demo_risk_m_tbl <- tbl_regression(demo_risk_m, exponentiate = TRUE) %>%
+  modify_table_styling(
+    columns = c(estimate, ci),
+    rows = reference_row %in% TRUE,
+    missing_symbol = "Ref."
+  ) %>%
+  modify_column_hide(column = ci) %>%
+  bold_labels() %>%
+  bold_p(t = 0.05)
+
+demo_sdoh_m_tbl <- tbl_regression(demo_sdoh_m, exponentiate = TRUE) %>%
   modify_table_styling(
     columns = c(estimate, ci),
     rows = reference_row %in% TRUE,
@@ -1628,11 +1672,13 @@ tbl_merge(
   tbls = list(
     demo_m_tbl,
     demo_risk_m_tbl,
+    demo_sdoh_m_tbl,
     demo_risk_sdoh_m_tbl,
     full_m_tbl
   ),
   tab_spanner = c("Demographics",
                      "Demographics and Risk Factors",
+                     "Demographics and SDOH",
                      "Demographics, Risk Factors, SDOH",
                      "Full Model")
 )
