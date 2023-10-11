@@ -503,16 +503,33 @@ data <- source_data %>%
     religious_attendance,
     cvd
   )
+
+data_f <- data %>% filter(gender == "Female")
+data_m <- data %>% filter(gender == "Male")
+```
+
+```{r}
+sumtable(data, digits = 3)
 ```
 
 ```{r, eval = FALSE}
 # output variable frequency table to .csv
-sumtable(data, out = "csv", file = "../out/summary_table.csv")
+sumtable(data, digits = 3,  out = "csv", file = "../out/summary_table.csv")
 
 # output full dataset to .csv
 source_data %>%
   write.csv(file = "../out/source_data.csv")
 ```
+
+```{r, eval = FALSE}
+# Female and Male tables
+
+# output variable frequency table to .csv
+sumtable(data_f, digits = 3, out = "csv", file = "../out/summary_table_f.csv")
+sumtable(data_m, digits = 3, out = "csv", file = "../out/summary_table_m.csv")
+
+```
+
 
 # Check distribution of continuous variables
 
@@ -844,10 +861,7 @@ model_tbl
 
 # Stratified models
 
-```{r}
-data_f <- data %>% filter(gender == "Female")
-data_m <- data %>% filter(gender == "Male")
-```
+
 
 
 ```{r}
