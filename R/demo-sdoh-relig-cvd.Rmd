@@ -35,10 +35,7 @@ library(MuMIn)
 library(flexmix)
 library(pROC)
 library(modelsummary)
-library(corrr)
-library(corrplot)
 library(car)
-library(fastDummies)
 library(nortest)
 ```
 
@@ -733,15 +730,6 @@ chisq.test(data$cvd, data$health_care_access)
 ```
 
 
-### depression
-
-```{r}
-depression <- glm(cvd ~ depression, data = data, family = "binomial")
-summary(depression)
-blr_model_fit_stats(depression)
-```
-
-
 ## Risk Factors
 
 ### BMI
@@ -753,6 +741,13 @@ blr_model_fit_stats(BMI)
 chisq.test(data$cvd, data$BMI)
 ```
 
+### depression
+
+```{r}
+depression <- glm(cvd ~ depression, data = data, family = "binomial")
+summary(depression)
+blr_model_fit_stats(depression)
+```
 
 ### high blood pressure
 
@@ -806,592 +801,8 @@ chisq.test(data$cvd, data$religious_attendance)
 ```
 
 
-# Robust Model
 
-```{r}
-model <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    gender +
-    ethnicity +
-    education +
-    marital_status +
-    food_ran_out +
-    health_insurance +
-    home +
-    poverty_level_category +
-    emotional_support +
-    health_care_access +
-    depression +
-    high_blood_pressure +
-    cholesterol +
-    diabetes +
-    cigarette_use +
-    BMI +
-    religious_attendance,
-  data = data,
-  family = "binomial"
-)
-
-summary(model)
-blr_model_fit_stats(model)
-blr_vif_tol(model)
-```
-
-```{r}
-# model significance
-with(model, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
-```
-
-```{r}
-# robust model table
-model_tbl <- tbl_regression(model, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_tbl
-```
-
-
-# Stratified models
-
-
-
-
-```{r}
-model_f <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    ethnicity +
-    education +
-    marital_status +
-    food_ran_out +
-    health_insurance +
-    home +
-    poverty_level_category +
-    emotional_support +
-    health_care_access +
-    depression +
-    high_blood_pressure +
-    cholesterol +
-    diabetes +
-    cigarette_use +
-    BMI +
-    religious_attendance,
-  data = data_f,
-  family = "binomial"
-)
-
-model_m <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    ethnicity +
-    education +
-    marital_status +
-    food_ran_out +
-    health_insurance +
-    home +
-    poverty_level_category +
-    emotional_support +
-    health_care_access +
-    depression +
-    high_blood_pressure +
-    cholesterol +
-    diabetes +
-    cigarette_use +
-    BMI +
-    religious_attendance,
-  data = data_m,
-  family = "binomial"
-)
-```
-
-## Female
-
-```{r}
-summary(model_f)
-blr_model_fit_stats(model_f)
-blr_vif_tol(model_f)
-```
-
-## Male
-
-```{r}
-summary(model_m)
-blr_model_fit_stats(model_m)
-blr_vif_tol(model_m)
-```
-
-## Control only
-
-### Female
-
-```{r}
-control_f <- glm(cvd ~ age + num_healthcare_visits, data = data_f, family = "binomial")
-summary(control_f)
-blr_model_fit_stats(control_f)
-```
-
-### Male
-
-```{r}
-control_m <- glm(cvd ~ age + num_healthcare_visits, data = data_m, family = "binomial")
-summary(control_m)
-blr_model_fit_stats(control_m)
-```
-
-
-## Control + Demographics
-
-```{r}
-model_1f <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    ethnicity +
-    education +
-    marital_status,
-  data = data_f,
-  family = "binomial"
-)
-
-model_1m <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    ethnicity +
-    education +
-    marital_status,
-  data = data_m,
-  family = "binomial"
-)
-```
-
-### Female
-
-```{r}
-summary(model_1f)
-blr_model_fit_stats(model_1f)
-blr_vif_tol(model_1f)
-```
-
-### Male
-
-```{r}
-summary(model_1m)
-blr_model_fit_stats(model_1m)
-blr_vif_tol(model_1m)
-```
-
-## Control + risk factors
-
-```{r}
-model_2f <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    high_blood_pressure +
-    cholesterol +
-    diabetes +
-    cigarette_use +
-    BMI,
-  data = data_f,
-  family = "binomial"
-)
-
-model_2m <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    high_blood_pressure +
-    cholesterol +
-    diabetes +
-    cigarette_use +
-    BMI,
-  data = data_m,
-  family = "binomial"
-)
-```
-
-### Female
-```{r}
-summary(model_2f)
-blr_model_fit_stats(model_2f)
-blr_vif_tol(model_2f)
-```
-
-
-### Male
-
-```{r}
-summary(model_2m)
-blr_model_fit_stats(model_2m)
-blr_vif_tol(model_2m)
-```
-
-## Control + SDOH
-
-```{r}
-model_3f <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    food_ran_out +
-    health_insurance +
-    home +
-    poverty_level_category +
-    emotional_support +
-    health_care_access +
-    depression,
-  data = data_f,
-  family = "binomial"
-)
-
-model_3m <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    food_ran_out +
-    health_insurance +
-    home +
-    poverty_level_category +
-    emotional_support +
-    health_care_access +
-    depression,
-  data = data_m,
-  family = "binomial"
-)
-```
-
-### Female
-
-```{r}
-summary(model_3f)
-blr_model_fit_stats(model_3f)
-blr_vif_tol(model_3f)
-```
-
-
-### Male
-
-```{r}
-summary(model_3m)
-blr_model_fit_stats(model_3m)
-blr_vif_tol(model_3m)
-```
-
-## Control + religious attendance
-
-```{r}
-model_4f <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    religious_attendance,
-  data = data_f,
-  family = "binomial"
-)
-
-model_4m <- glm(
-  cvd ~ age +
-    num_healthcare_visits +
-    religious_attendance,
-  data = data_m,
-  family = "binomial"
-)
-```
-
-### Female
-
-```{r}
-summary(model_4f)
-blr_model_fit_stats(model_4f)
-blr_vif_tol(model_4f)
-```
-
-
-### Male
-
-```{r}
-summary(model_4m)
-blr_model_fit_stats(model_4m)
-blr_vif_tol(model_4m)
-```
-
-# Odds Ratios and P-Value
-
-## all variables
-
-```{r, warning=FALSE}
-model_f_tbl <- tbl_regression(model_f, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_m_tbl <- tbl_regression(model_m, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-tbl_merge(
-  tbls = list(
-    model_f_tbl,
-    model_m_tbl
-  ),
-  tab_spanner = c("Females", "Males")
-)
-```
-
-
-## Females
-
-```{r, warning=FALSE}
-control_f_tbl <- tbl_regression(control_f, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_1f_tbl <- tbl_regression(model_1f, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_2f_tbl <- tbl_regression(model_2f, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_3f_tbl <- tbl_regression(model_3f, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_4f_tbl <- tbl_regression(model_4f, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-tbl_merge(
-  tbls = list(
-    control_f_tbl,
-    model_1f_tbl,
-    model_2f_tbl,
-    model_3f_tbl,
-    model_4f_tbl,
-    model_f_tbl
-  ),
-  tab_spanner = c(
-    "Control",
-    "Control + demo",
-    "Control + risk factors",
-    "Control + SDOH",
-    "Control + religion",
-    "All variables"
-  )
-)
-```
-
-## Males
-
-```{r, warning=FALSE}
-control_m_tbl <- tbl_regression(control_m, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_1m_tbl <- tbl_regression(model_1m, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_2m_tbl <- tbl_regression(model_2m, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_3m_tbl <- tbl_regression(model_3m, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-model_4m_tbl <- tbl_regression(model_4m, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
-
-tbl_merge(
-  tbls = list(
-    control_m_tbl,
-    model_1m_tbl,
-    model_2m_tbl,
-    model_3m_tbl,
-    model_4m_tbl,
-    model_m_tbl
-  ),
-  tab_spanner = c(
-    "Control",
-    "Control + demo",
-    "Control + risk factors",
-    "Control + SDOH",
-    "Control + religion",
-    "All variables"
-  )
-)
-```
-
-# Model Evaluation Summary
-
-```{r}
-# females
-model_names <-  c("Control only",
-                     "Control and demo",
-                     "Control and risk factors",
-                     "Control and SDOH",
-                     "Control and religion",
-                     "All variables")
-
-Nagelkerke <- c(blr_rsq_nagelkerke(control_f),
-                 blr_rsq_nagelkerke(model_1f),
-                 blr_rsq_nagelkerke(model_2f),
-                 blr_rsq_nagelkerke(model_3f),
-                 blr_rsq_nagelkerke(model_4f),
-                 blr_rsq_nagelkerke(model_f))
-
-McFadden <- c(blr_rsq_mcfadden_adj(control_f),
-                 blr_rsq_mcfadden_adj(model_1f),
-                 blr_rsq_mcfadden_adj(model_2f),
-                 blr_rsq_mcfadden_adj(model_3f),
-                 blr_rsq_mcfadden_adj(model_4f),
-                 blr_rsq_mcfadden_adj(model_f))
-
-AIC <- c(AIC(control_f),
-                 AIC(model_1f),
-                 AIC(model_2f),
-                 AIC(model_3f),
-                 AIC(model_4f),
-                 AIC(model_f))
-
-BIC <- c(BIC(control_f),
-                 BIC(model_1f),
-                 BIC(model_2f),
-                 BIC(model_3f),
-                 BIC(model_4f),
-                 BIC(model_f))
-
-data_frame("Names" = model_names,
-           "Nagelkerke" = Nagelkerke,
-           "McFadden" = McFadden,
-           "AIC" = AIC,
-           "BIC" = BIC) %>% 
-  kable()
-```
-
-
-```{r}
-# males
-model_names <-  c("Control only",
-                     "Control and demo",
-                     "Control and risk factors",
-                     "Control and SDOH",
-                     "Control and religion",
-                     "All variables")
-
-Nagelkerke <- c(blr_rsq_nagelkerke(control_m),
-                 blr_rsq_nagelkerke(model_1m),
-                 blr_rsq_nagelkerke(model_2m),
-                 blr_rsq_nagelkerke(model_3m),
-                 blr_rsq_nagelkerke(model_4m),
-                 blr_rsq_nagelkerke(model_m))
-
-McFadden <- c(blr_rsq_mcfadden_adj(control_m),
-                 blr_rsq_mcfadden_adj(model_1m),
-                 blr_rsq_mcfadden_adj(model_2m),
-                 blr_rsq_mcfadden_adj(model_3m),
-                 blr_rsq_mcfadden_adj(model_4m),
-                 blr_rsq_mcfadden_adj(model_m))
-
-AIC <- c(AIC(control_m),
-                 AIC(model_1m),
-                 AIC(model_2m),
-                 AIC(model_3m),
-                 AIC(model_4m),
-                 AIC(model_m))
-
-BIC <- c(BIC(control_m),
-                 BIC(model_1m),
-                 BIC(model_2m),
-                 BIC(model_3m),
-                 BIC(model_4m),
-                 BIC(model_m))
-
-data_frame("Names" = model_names,
-           "Nagelkerke" = Nagelkerke,
-           "McFadden" = McFadden,
-           "AIC" = AIC,
-           "BIC" = BIC) %>% 
-  kable()
-```
-
-# Re-organize model variable sets
+# Final Version for results
 
 ```{r}
 # Control + demo
@@ -1400,47 +811,47 @@ demo_f <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marita
 demo_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status, data = data_m, family = "binomial")
 
 
-# control + demo + risk
+# control + demo + risk factors
 demo_risk_f <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
-                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI, data = data_f, family = "binomial")
+                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI + depression, data = data_f, family = "binomial")
 
 demo_risk_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
-                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI, data = data_m, family = "binomial")
+                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI + depression, data = data_m, family = "binomial")
 
 
-# alternative order: control + demo + sdoh
-demo_sdoh_f <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
-                   + food_ran_out + health_insurance + home + poverty_level_category + 
-                        emotional_support + health_care_access + depression, data = data_f, family = "binomial")
-
-demo_sdoh_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
-                   + food_ran_out + health_insurance + home + poverty_level_category + 
-                        emotional_support + health_care_access + depression, data = data_m, family = "binomial")
+# # alternative order: control + demo + sdoh
+# demo_sdoh_f <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
+#                    + food_ran_out + health_insurance + home + poverty_level_category + 
+#                         emotional_support + health_care_access + depression, data = data_f, family = "binomial")
+# 
+# demo_sdoh_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
+#                    + food_ran_out + health_insurance + home + poverty_level_category + 
+#                         emotional_support + health_care_access + depression, data = data_m, family = "binomial")
 
 
 # control + demo + risk + sdoh
 demo_risk_sdoh_f <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
-                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI
+                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI + depression
                    + food_ran_out + health_insurance + home + poverty_level_category + 
-                        emotional_support + health_care_access + depression, data = data_f, family = "binomial")
+                        emotional_support + health_care_access, data = data_f, family = "binomial")
 
 demo_risk_sdoh_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
-                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI
+                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI + depression
                    + food_ran_out + health_insurance + home + poverty_level_category + 
-                        emotional_support + health_care_access + depression, data = data_m, family = "binomial")
+                        emotional_support + health_care_access, data = data_m, family = "binomial")
 
 
 # all (include religious attendance)
 full_f <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
-                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI
+                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI + depression
                    + food_ran_out + health_insurance + home + poverty_level_category + 
-                        emotional_support + health_care_access + depression
+                        emotional_support + health_care_access
                    + religious_attendance, data = data_f, family = "binomial")
 
 full_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marital_status
-                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI
+                   + high_blood_pressure + cholesterol + diabetes + cigarette_use + BMI + depression
                    + food_ran_out + health_insurance + home + poverty_level_category + 
-                        emotional_support + health_care_access + depression
+                        emotional_support + health_care_access
                    + religious_attendance, data = data_m, family = "binomial")
 ```
 
@@ -1452,31 +863,26 @@ full_m <- glm(cvd ~ age + num_healthcare_visits + ethnicity + education + marita
 # females
 model_names <-  c("Demographics",
                      "Demographics and Risk Factors",
-                     "Demographics and SDOH",
                      "Demographics, Risk Factors, SDOH",
                      "Full Model")
 
 Nagelkerke <- c(blr_rsq_nagelkerke(demo_f),
                  blr_rsq_nagelkerke(demo_risk_f),
-                 blr_rsq_nagelkerke(demo_sdoh_f), 
                  blr_rsq_nagelkerke(demo_risk_sdoh_f),
                  blr_rsq_nagelkerke(full_f))
 
 McFadden <- c(blr_rsq_mcfadden_adj(demo_f),
                  blr_rsq_mcfadden_adj(demo_risk_f),
-                 blr_rsq_mcfadden_adj(demo_sdoh_f),
                  blr_rsq_mcfadden_adj(demo_risk_sdoh_f),
                  blr_rsq_mcfadden_adj(full_f))
 
 AIC <- c(AIC(demo_f),
                  AIC(demo_risk_f),
-                 AIC(demo_sdoh_f),
                  AIC(demo_risk_sdoh_f),
                  AIC(full_f))
 
 BIC <- c(BIC(demo_f),
                  BIC(demo_risk_f),
-                 BIC(demo_sdoh_f),
                  BIC(demo_risk_sdoh_f),
                  BIC(full_f))
 
@@ -1486,7 +892,6 @@ BIC <- c(BIC(demo_f),
 
 Chisq <- c(with(demo_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(demo_risk_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-           with(demo_sdoh_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(demo_risk_sdoh_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(full_f, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)))
 
@@ -1506,31 +911,26 @@ data_frame("Names" = model_names,
 # males
 model_names <-  c("Demographics",
                      "Demographics and Risk Factors",
-                     "Demographics and SDOH",
                      "Demographics, Risk Factors, SDOH",
                      "Full Model")
 
 Nagelkerke <- c(blr_rsq_nagelkerke(demo_m),
                  blr_rsq_nagelkerke(demo_risk_m),
-                 blr_rsq_nagelkerke(demo_sdoh_m), 
                  blr_rsq_nagelkerke(demo_risk_sdoh_m),
                  blr_rsq_nagelkerke(full_m))
 
 McFadden <- c(blr_rsq_mcfadden_adj(demo_m),
                  blr_rsq_mcfadden_adj(demo_risk_m),
-                 blr_rsq_mcfadden_adj(demo_sdoh_m),
                  blr_rsq_mcfadden_adj(demo_risk_sdoh_m),
                  blr_rsq_mcfadden_adj(full_m))
 
 AIC <- c(AIC(demo_m),
                  AIC(demo_risk_m),
-                 AIC(demo_sdoh_m),
                  AIC(demo_risk_sdoh_m),
                  AIC(full_m))
 
 BIC <- c(BIC(demo_m),
                  BIC(demo_risk_m),
-                 BIC(demo_sdoh_m),
                  BIC(demo_risk_sdoh_m),
                  BIC(full_m))
 
@@ -1540,7 +940,6 @@ BIC <- c(BIC(demo_m),
 
 Chisq <- c(with(demo_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(demo_risk_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
-           with(demo_sdoh_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(demo_risk_sdoh_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)),
            with(full_m, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)))
 
@@ -1553,6 +952,56 @@ data_frame("Names" = model_names,
   kable()
 ```
 
+## VIF
+
+### Female 
+
+```{r}
+blr_vif_tol(demo_f) %>% 
+  kable()
+```
+
+```{r}
+blr_vif_tol(demo_risk_f) %>% 
+  kable()
+```
+
+
+```{r}
+blr_vif_tol(demo_risk_sdoh_f) %>% 
+  kable()
+```
+
+
+```{r}
+blr_vif_tol(full_f) %>% 
+  kable()
+```
+
+### Male 
+
+```{r}
+blr_vif_tol(demo_m) %>% 
+  kable()
+```
+
+
+```{r}
+blr_vif_tol(demo_risk_m) %>% 
+  kable()
+```
+
+
+```{r}
+blr_vif_tol(demo_risk_sdoh_m) %>% 
+  kable()
+```
+
+
+```{r}
+blr_vif_tol(full_m) %>% 
+  kable()
+```
 
 
 ## Odds Ratio tables
@@ -1569,7 +1018,7 @@ demo_f_tbl <- tbl_regression(demo_f, exponentiate = TRUE) %>%
   ) %>%
   modify_column_hide(column = ci) %>%
   bold_labels() %>%
-  bold_p(t = 0.05)
+  bold_p(t  = 0.1)
 
 demo_risk_f_tbl <- tbl_regression(demo_risk_f, exponentiate = TRUE) %>%
   modify_table_styling(
@@ -1579,17 +1028,17 @@ demo_risk_f_tbl <- tbl_regression(demo_risk_f, exponentiate = TRUE) %>%
   ) %>%
   modify_column_hide(column = ci) %>%
   bold_labels() %>%
-  bold_p(t = 0.05)
+  bold_p(t  = 0.1)
 
-demo_sdoh_f_tbl <- tbl_regression(demo_sdoh_f, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
+# demo_sdoh_f_tbl <- tbl_regression(demo_sdoh_f, exponentiate = TRUE) %>%
+#   modify_table_styling(
+#     columns = c(estimate, ci),
+#     rows = reference_row %in% TRUE,
+#     missing_symbol = "Ref."
+#   ) %>%
+#   modify_column_hide(column = ci) %>%
+#   bold_labels() %>%
+#   bold_p(t  = 0.1)
 
 demo_risk_sdoh_f_tbl <- tbl_regression(demo_risk_sdoh_f, exponentiate = TRUE) %>%
   modify_table_styling(
@@ -1599,7 +1048,7 @@ demo_risk_sdoh_f_tbl <- tbl_regression(demo_risk_sdoh_f, exponentiate = TRUE) %>
   ) %>%
   modify_column_hide(column = ci) %>%
   bold_labels() %>%
-  bold_p(t = 0.05)
+  bold_p(t  = 0.1)
 
 full_f_tbl <- tbl_regression(full_f, exponentiate = TRUE) %>%
   modify_table_styling(
@@ -1609,19 +1058,17 @@ full_f_tbl <- tbl_regression(full_f, exponentiate = TRUE) %>%
   ) %>%
   modify_column_hide(column = ci) %>%
   bold_labels() %>%
-  bold_p(t = 0.05)
+  bold_p(t  = 0.1)
 
 tbl_merge(
   tbls = list(
     demo_f_tbl,
     demo_risk_f_tbl,
-    demo_sdoh_f_tbl,
     demo_risk_sdoh_f_tbl,
     full_f_tbl
   ),
   tab_spanner = c("Demographics",
                      "Demographics and Risk Factors",
-                     "Demographics and SDOH",
                      "Demographics, Risk Factors, SDOH",
                      "Full Model")
 )
@@ -1640,7 +1087,7 @@ demo_m_tbl <- tbl_regression(demo_m, exponentiate = TRUE) %>%
   ) %>%
   modify_column_hide(column = ci) %>%
   bold_labels() %>%
-  bold_p(t = 0.05)
+  bold_p(t  = 0.1)
 
 demo_risk_m_tbl <- tbl_regression(demo_risk_m, exponentiate = TRUE) %>%
   modify_table_styling(
@@ -1650,17 +1097,17 @@ demo_risk_m_tbl <- tbl_regression(demo_risk_m, exponentiate = TRUE) %>%
   ) %>%
   modify_column_hide(column = ci) %>%
   bold_labels() %>%
-  bold_p(t = 0.05)
+  bold_p(t  = 0.1)
 
-demo_sdoh_m_tbl <- tbl_regression(demo_sdoh_m, exponentiate = TRUE) %>%
-  modify_table_styling(
-    columns = c(estimate, ci),
-    rows = reference_row %in% TRUE,
-    missing_symbol = "Ref."
-  ) %>%
-  modify_column_hide(column = ci) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05)
+# demo_sdoh_m_tbl <- tbl_regression(demo_sdoh_m, exponentiate = TRUE) %>%
+#   modify_table_styling(
+#     columns = c(estimate, ci),
+#     rows = reference_row %in% TRUE,
+#     missing_symbol = "Ref."
+#   ) %>%
+#   modify_column_hide(column = ci) %>%
+#   bold_labels() %>%
+#  bold_p(t  = 0.1)
 
 demo_risk_sdoh_m_tbl <- tbl_regression(demo_risk_sdoh_m, exponentiate = TRUE) %>%
   modify_table_styling(
@@ -1670,7 +1117,7 @@ demo_risk_sdoh_m_tbl <- tbl_regression(demo_risk_sdoh_m, exponentiate = TRUE) %>
   ) %>%
   modify_column_hide(column = ci) %>%
   bold_labels() %>%
-  bold_p(t = 0.05)
+  bold_p(t  = 0.1)
 
 full_m_tbl <- tbl_regression(full_m, exponentiate = TRUE) %>%
   modify_table_styling(
@@ -1680,21 +1127,26 @@ full_m_tbl <- tbl_regression(full_m, exponentiate = TRUE) %>%
   ) %>%
   modify_column_hide(column = ci) %>%
   bold_labels() %>%
-  bold_p(t = 0.05)
+  bold_p(t  = 0.1)
 
 tbl_merge(
   tbls = list(
     demo_m_tbl,
     demo_risk_m_tbl,
-    demo_sdoh_m_tbl,
     demo_risk_sdoh_m_tbl,
     full_m_tbl
   ),
   tab_spanner = c("Demographics",
                      "Demographics and Risk Factors",
-                     "Demographics and SDOH",
                      "Demographics, Risk Factors, SDOH",
                      "Full Model")
 )
 ```
+
+
+
+
+
+
+
 
